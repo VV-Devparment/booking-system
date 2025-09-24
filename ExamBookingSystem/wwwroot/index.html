@@ -1,0 +1,500 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:;">
+    <title>Aviation Checkride Booking System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="styles-updated.css">
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="bi bi-airplane-fill"></i> Aviation Checkride System
+            </a>
+            <div class="ms-auto">
+                <button class="btn btn-outline-light btn-sm" onclick="showAdminLogin()">
+                    <i class="bi bi-shield-lock"></i> Admin
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Tab Navigation -->
+    <div class="container mt-4">
+        <ul class="nav nav-pills nav-fill mb-4 shadow-sm rounded-pill bg-white p-2" id="mainTabs">
+            <li class="nav-item">
+                <a class="nav-link active rounded-pill" data-bs-toggle="tab" href="#studentTab">
+                    <i class="bi bi-person-badge"></i> Student Booking
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link rounded-pill" data-bs-toggle="tab" href="#examinerTab">
+                    <i class="bi bi-clipboard-check"></i> Examiner Portal
+                </a>
+            </li>
+            <li class="nav-item d-none" id="adminTabBtn">
+                <a class="nav-link rounded-pill" data-bs-toggle="tab" href="#adminTab">
+                    <i class="bi bi-speedometer2"></i> Admin Dashboard
+                </a>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Student Tab -->
+            <div class="tab-pane fade show active" id="studentTab">
+                <div id="studentForm" class="row justify-content-center">
+                    <div class="col-lg-10">
+                        <div class="card shadow-lg border-0 rounded-lg animate-slide-in">
+                            <div class="card-header bg-gradient-primary text-white">
+                                <h4 class="mb-0"><i class="bi bi-calendar-plus"></i> Book Your Checkride</h4>
+                            </div>
+                            <div class="card-body p-4">
+                                <div class="alert alert-info mb-4">
+                                    <i class="bi bi-info-circle"></i> <strong>Payment Required:</strong> $100 USD will be charged to proceed with booking
+                                </div>
+
+                                <form id="bookingForm">
+                                    <h5 class="mb-3">Applicant Information</h5>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="firstName" class="form-label">First Name *</label>
+                                            <input type="text" class="form-control" id="firstName" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="lastName" class="form-label">Last Name *</label>
+                                            <input type="text" class="form-control" id="lastName" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="email" class="form-label">Email *</label>
+                                            <input type="email" class="form-control" id="email" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="phone" class="form-label">Phone *</label>
+                                            <div class="input-group">
+                                                <select class="form-select" id="countryCode" style="max-width: 120px;">
+                                                    <option value="+1" selected>🇺🇸 +1</option>
+                                                    <option value="+44">🇬🇧 +44</option>
+                                                    <option value="+33">🇫🇷 +33</option>
+                                                    <option value="+49">🇩🇪 +49</option>
+                                                    <option value="+34">🇪🇸 +34</option>
+                                                    <option value="+39">🇮🇹 +39</option>
+                                                    <option value="+81">🇯🇵 +81</option>
+                                                    <option value="+86">🇨🇳 +86</option>
+                                                    <option value="+91">🇮🇳 +91</option>
+                                                    <option value="+61">🇦🇺 +61</option>
+                                                    <option value="+55">🇧🇷 +55</option>
+                                                    <option value="+52">🇲🇽 +52</option>
+                                                    <option value="+7">🇷🇺 +7</option>
+                                                    <option value="+380">🇺🇦 +380</option>
+                                                </select>
+                                                <input type="tel" class="form-control" id="phone"
+                                                       placeholder="(555) 123-4567"
+                                                       pattern="[0-9\s\(\)\-]+" required>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr class="my-4">
+                                    <h5 class="mb-3">Aircraft & Location</h5>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="aircraftType" class="form-label">Aircraft Type *</label>
+                                            <input type="text" class="form-control" id="aircraftType" placeholder="e.g. Cessna 172" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="checkRideType" class="form-label">CHECKRIDE TYPE (Airplane only) *</label>
+                                            <select class="form-select" id="checkRideType" required>
+                                                <option value="">Select checkride type</option>
+                                                <option value="Private Pilot Single Engine">Private Pilot Single Engine</option>
+                                                <option value="Private Pilot Multi Engine Add">Private Pilot Multi Engine Add</option>
+                                                <option value="Instrument">Instrument Rating</option>
+                                                <option value="Commercial Pilot Single Engine">Commercial Pilot Single Engine</option>
+                                                <option value="Commercial Pilot Multi Engine">Commercial Pilot Multi Engine</option>
+                                                <option value="CFI">CFI Initial</option>
+                                                <option value="CFII">CFII</option>
+                                                <option value="MEI">MEI</option>
+                                                <option value="ATP">ATP</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="preferredAirport" class="form-label">Preferred Airport *</label>
+                                            <input type="text" class="form-control" id="preferredAirport" placeholder="e.g. KLAX" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="searchRadius" class="form-label">Search Radius *</label>
+                                            <select class="form-select" id="searchRadius" required>
+                                                <option value="50">Within 50 nautical miles</option>
+                                                <option value="100">Within 100 nautical miles</option>
+                                                <option value="250">Within 250 nautical miles</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="willingToFly">
+                                            <label class="form-check-label" for="willingToFly">
+                                                I am willing to fly to examiner's location within the selected radius
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <hr class="my-4">
+                                    <h5 class="mb-3">Availability Window</h5>
+
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="asapCheckbox" checked onchange="toggleDateRange()">
+                                            <label class="form-check-label" for="asapCheckbox">
+                                                ASAP (any date available)
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div id="dateRangeSection" class="row" style="display: none;">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="startDate" class="form-label">Start Date</label>
+                                            <input type="date" class="form-control" id="startDate">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="endDate" class="form-label">End Date</label>
+                                            <input type="date" class="form-control" id="endDate">
+                                        </div>
+                                    </div>
+
+                                    <hr class="my-4">
+                                    <h5 class="mb-3">Additional Information</h5>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="ftnNumber" class="form-label">FTN Number</label>
+                                            <input type="text" class="form-control" id="ftnNumber" placeholder="Enter FTN Number">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="examId" class="form-label">Exam ID (if applicable)</label>
+                                            <input type="text" class="form-control" id="examId" placeholder="Enter Exam ID">
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="additionalNotes" class="form-label">Additional Message/Notes</label>
+                                        <textarea class="form-control" id="additionalNotes" rows="3" placeholder="Add any additional information or requirements"></textarea>
+                                    </div>
+
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary btn-lg">
+                                            <span id="submitText">Proceed to Payment ($100)</span>
+                                            <span id="loadingSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="successMessage" class="row justify-content-center d-none">
+                    <div class="col-md-8">
+                        <div class="alert alert-success">
+                            <h4>✅ Booking Submitted Successfully!</h4>
+                            <p>Your booking ID: <strong id="bookingIdDisplay"></strong></p>
+                            <ul id="examinersList"></ul>
+                            <button class="btn btn-success" onclick="createNewBooking()">Create Another Booking</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="errorMessage" class="row justify-content-center d-none">
+                    <div class="col-md-8">
+                        <div class="alert alert-danger">
+                            <h4>❌ Error</h4>
+                            <p id="errorText"></p>
+                            <button class="btn btn-danger" onclick="retryBooking()">Try Again</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Examiner Tab -->
+            <div class="tab-pane fade" id="examinerTab">
+                <div class="row">
+                    <div class="col-md-12 mb-4">
+                        <!-- Available Bookings with Filters -->
+                        <div class="card shadow-lg border-0 animate-slide-in">
+                            <div class="card-header bg-gradient-primary text-white">
+                                <h5 class="mb-0"><i class="bi bi-list-ul"></i> Available Bookings</h5>
+                            </div>
+                            <div class="card-body">
+                                <!-- Filters -->
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <input type="email" id="examinerEmailFilter" class="form-control"
+                                               placeholder="Your email *" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select id="examTypeFilter" class="form-select">
+                                            <option value="">All Exam Types</option>
+                                            <option value="Private">Private</option>
+                                            <option value="Instrument">Instrument</option>
+                                            <option value="Commercial">Commercial</option>
+                                            <option value="CFI">CFI</option>
+                                            <option value="ATP">ATP</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="text" id="stateFilter" class="form-control"
+                                               placeholder="State (e.g., TX)">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="date" id="dateFromFilter" class="form-control">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button class="btn btn-primary w-100" onclick="loadFilteredBookings()">
+                                            <i class="bi bi-search"></i> Search
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Results -->
+                                <div id="availableBookingsList">
+                                    <p class="text-muted">Enter your email and click Search to see available bookings</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card shadow-lg border-0 animate-slide-in">
+                            <div class="card-header bg-gradient-info text-white">
+                                <h5 class="mb-0"><i class="bi bi-reply"></i> Respond to Booking</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="examinerResponseForm">
+                                    <div class="mb-3">
+                                        <label for="bookingId" class="form-label">Booking ID</label>
+                                        <input type="text" class="form-control" id="bookingId" required>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="examinerEmail" class="form-label">Your Email</label>
+                                            <input type="email" class="form-control" id="examinerEmail" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="examinerName" class="form-label">Your Name</label>
+                                            <input type="text" class="form-control" id="examinerName" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="studentName" class="form-label">Student Name</label>
+                                            <input type="text" class="form-control" id="studentName" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="studentEmail" class="form-label">Student Email</label>
+                                            <input type="email" class="form-control" id="studentEmail" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="proposedDateTime" class="form-label">Proposed Date & Time</label>
+                                        <input type="datetime-local" class="form-control" id="proposedDateTime" required>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="responseMessage" class="form-label">Message</label>
+                                        <textarea class="form-control" id="responseMessage" rows="2"></textarea>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Your Response</label>
+                                        <div class="btn-group w-100" role="group">
+                                            <input type="radio" class="btn-check" name="response" id="acceptResponse" value="Accepted" required>
+                                            <label class="btn btn-outline-success" for="acceptResponse">✅ Accept</label>
+
+                                            <input type="radio" class="btn-check" name="response" id="declineResponse" value="Declined" required>
+                                            <label class="btn btn-outline-danger" for="declineResponse">❌ Decline</label>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-info w-100">Submit Response</button>
+                                </form>
+
+                                <div id="examinerResponseResult" class="mt-3"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card shadow-lg border-0 animate-slide-in">
+                            <div class="card-header bg-gradient-success text-white">
+                                <h5 class="mb-0"><i class="bi bi-list-check"></i> All Active Bookings</h5>
+                            </div>
+                            <div class="card-body">
+                                <button class="btn btn-success mb-3" onclick="loadActiveBookings()">
+                                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                                </button>
+                                <div id="activeBookingsList"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Tab -->
+            <div class="tab-pane fade" id="adminTab">
+                <div id="adminContent">
+                    <div class="text-center py-5">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div class="modal fade" id="adminLoginModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="bi bi-shield-lock"></i> Admin Login</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="adminLoginForm">
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="adminEmail" value="admin@exambooking.com" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" id="adminPassword" placeholder="Admin123!" required>
+                        </div>
+                        <button type="submit" class="btn btn-dark w-100">Login</button>
+                    </form>
+                    <div id="loginError" class="alert alert-danger mt-3 d-none"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app-with-payment.js"></script>
+    <script src="admin.js"></script>
+    <script>
+        // Toggle date range visibility
+        function toggleDateRange() {
+            const asapCheckbox = document.getElementById('asapCheckbox');
+            const dateRangeSection = document.getElementById('dateRangeSection');
+
+            if (asapCheckbox.checked) {
+                dateRangeSection.style.display = 'none';
+                document.getElementById('startDate').value = '';
+                document.getElementById('endDate').value = '';
+            } else {
+                dateRangeSection.style.display = 'block';
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const nextWeek = new Date();
+                nextWeek.setDate(nextWeek.getDate() + 7);
+
+                document.getElementById('startDate').value = tomorrow.toISOString().split('T')[0];
+                document.getElementById('endDate').value = nextWeek.toISOString().split('T')[0];
+            }
+        }
+
+        // Initialize date inputs
+        document.addEventListener('DOMContentLoaded', function () {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(10, 0, 0, 0);
+            const dateStr = tomorrow.toISOString().slice(0, 16);
+
+            const proposedDateTime = document.getElementById('proposedDateTime');
+            if (proposedDateTime) {
+                proposedDateTime.value = dateStr;
+            }
+        });
+
+        // Global function to show admin login
+        function showAdminLogin() {
+            const modal = new bootstrap.Modal(document.getElementById('adminLoginModal'));
+            modal.show();
+        }
+
+        // Admin login form handling
+        document.addEventListener('DOMContentLoaded', function () {
+            const loginForm = document.getElementById('adminLoginForm');
+            if (loginForm) {
+                loginForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+
+                    const email = document.getElementById('adminEmail').value;
+                    const password = document.getElementById('adminPassword').value;
+                    const errorDiv = document.getElementById('loginError');
+
+                    try {
+                        const response = await fetch('/api/Admin/login', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                email: email,
+                                password: password
+                            })
+                        });
+
+                        if (response.ok) {
+                            const result = await response.json();
+
+                            if (result.success) {
+                                document.getElementById('adminTabBtn').classList.remove('d-none');
+                                const modal = bootstrap.Modal.getInstance(document.getElementById('adminLoginModal'));
+                                if (modal) modal.hide();
+
+                                const adminTab = new bootstrap.Tab(document.querySelector('#adminTabBtn a'));
+                                adminTab.show();
+
+                                if (typeof window.loadAdminDashboard === 'function') {
+                                    await window.loadAdminDashboard();
+                                }
+                            }
+                        } else {
+                            if (errorDiv) {
+                                errorDiv.textContent = 'Invalid email or password';
+                                errorDiv.classList.remove('d-none');
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Login error:', error);
+                        if (errorDiv) {
+                            errorDiv.textContent = 'Connection error. Please try again.';
+                            errorDiv.classList.remove('d-none');
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

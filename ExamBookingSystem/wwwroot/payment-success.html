@@ -1,0 +1,318 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful - Exam Booking System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+
+        .success-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .success-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            padding: 40px;
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+            animation: slideUp 0.8s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .success-icon {
+            width: 120px;
+            height: 120px;
+            background: var(--success-gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            animation: bounce 0.6s ease-out 0.3s both;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% {
+                animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+                transform: translate3d(0,0,0);
+            }
+
+            40%, 43% {
+                animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+                transform: translate3d(0, -15px, 0);
+            }
+
+            70% {
+                animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+                transform: translate3d(0, -7px, 0);
+            }
+
+            90% {
+                transform: translate3d(0, -2px, 0);
+            }
+        }
+
+        .success-icon i {
+            font-size: 3rem;
+            color: white;
+        }
+
+        .success-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+
+        .success-subtitle {
+            font-size: 1.2rem;
+            color: #718096;
+            margin-bottom: 30px;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0f9ff 100%);
+            border-left: 4px solid #38ef7d;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 30px 0;
+            text-align: left;
+        }
+
+        .next-steps {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+            text-align: left;
+        }
+
+            .next-steps h5 {
+                color: #2d3748;
+                font-weight: 600;
+                margin-bottom: 15px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+            .step-item:last-child {
+                border-bottom: none;
+            }
+
+        .step-icon {
+            width: 35px;
+            height: 35px;
+            background: var(--primary-gradient);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+
+            .btn-primary:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+            }
+
+        .btn-outline-secondary {
+            border: 2px solid #e2e8f0;
+            padding: 12px 25px;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+            .btn-outline-secondary:hover {
+                background: #f8fafc;
+                border-color: #cbd5e0;
+            }
+
+        @media (max-width: 768px) {
+            .success-card {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+
+            .success-title {
+                font-size: 2rem;
+            }
+
+            .success-subtitle {
+                font-size: 1rem;
+            }
+
+            .btn-primary, .btn-outline-secondary {
+                width: 100%;
+                margin: 5px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="success-card">
+            <div class="success-icon">
+                <i class="bi bi-check-lg"></i>
+            </div>
+
+            <h1 class="success-title">Payment Successful!</h1>
+            <p class="success-subtitle">Your exam booking has been processed successfully</p>
+
+            <div class="info-box">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="bi bi-info-circle-fill text-success me-2"></i>
+                    <strong>What happens next?</strong>
+                </div>
+                <p class="mb-0">We're now contacting qualified examiners in your area. You'll receive an email confirmation once an examiner accepts your booking request.</p>
+            </div>
+
+            <div class="next-steps">
+                <h5>
+                    <i class="bi bi-list-check"></i>
+                    Next Steps
+                </h5>
+
+                <div class="step-item">
+                    <div class="step-icon">1</div>
+                    <div>
+                        <strong>Examiner Search</strong><br>
+                        <small class="text-muted">We're contacting up to 3 qualified examiners in your area</small>
+                    </div>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-icon">2</div>
+                    <div>
+                        <strong>Email Confirmation</strong><br>
+                        <small class="text-muted">You'll receive confirmation when an examiner accepts</small>
+                    </div>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-icon">3</div>
+                    <div>
+                        <strong>Calendar Invitation</strong><br>
+                        <small class="text-muted">A calendar invite with exam details will be sent</small>
+                    </div>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-icon">4</div>
+                    <div>
+                        <strong>Exam Day</strong><br>
+                        <small class="text-muted">Meet with your assigned examiner for the checkride</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex flex-column flex-md-row gap-3 justify-content-center mt-4">
+                <a href="index.html" class="btn btn-primary">
+                    <i class="bi bi-house-fill me-2"></i>
+                    Back to Home
+                </a>
+                <button class="btn btn-outline-secondary" onclick="checkBookingStatus()">
+                    <i class="bi bi-search me-2"></i>
+                    Check Status
+                </button>
+            </div>
+
+            <div class="mt-4 pt-3 border-top">
+                <small class="text-muted">
+                    <i class="bi bi-shield-check me-1"></i>
+                    Your payment is secure and your booking is guaranteed
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Get session ID from URL if available
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session_id');
+
+        function checkBookingStatus() {
+            // Redirect to active bookings modal on main page
+            window.location.href = 'index.html#check-bookings';
+        }
+
+        // Auto-redirect after 30 seconds if user doesn't interact
+        let redirectTimer;
+
+        function startRedirectTimer() {
+            redirectTimer = setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 30000);
+        }
+
+        function resetRedirectTimer() {
+            clearTimeout(redirectTimer);
+            startRedirectTimer();
+        }
+
+        // Reset timer on any user interaction
+        document.addEventListener('click', resetRedirectTimer);
+        document.addEventListener('keypress', resetRedirectTimer);
+
+        // Start the timer
+        startRedirectTimer();
+
+        // Show session ID if available
+        if (sessionId) {
+            console.log('Payment session ID:', sessionId);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,648 @@
+﻿// Admin.js - Improved version with mobile support
+(function () {
+    'use strict';
+
+    const ADMIN_API_BASE = '/api';
+    let allBookings = [];
+    let isAdminLoggedIn = false;
+
+    // Block Stripe errors
+    window.addEventListener('error', function (e) {
+        if (e.target && (e.target.src && e.target.src.includes('stripe.com'))) {
+            e.preventDefault();
+            return false;
+        }
+    }, true);
+
+    // Global function to load admin dashboard
+    window.loadAdminDashboard = async function () {
+        const adminContent = document.getElementById('adminContent');
+        if (!adminContent) {
+            console.error('Admin content div not found');
+            return;
+        }
+
+        console.log('Loading admin dashboard...');
+
+        // Create responsive HTML for admin panel
+        adminContent.innerHTML = `
+<!-- Statistics Cards - Mobile Responsive -->
+<div class="row mb-4 g-3">
+    <div class="col-6 col-lg-3">
+        <div class="stat-card primary">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="flex-grow-1">
+                    <h6 class="text-muted mb-1 small">Total</h6>
+                    <h4 class="mb-0 fw-bold" id="totalBookings">Loading...</h4>
+                </div>
+                <i class="bi bi-calendar-check text-primary fs-3 d-none d-sm-block"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card success">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="flex-grow-1">
+                    <h6 class="text-muted mb-1 small">Assigned</h6>
+                    <h4 class="mb-0 fw-bold" id="assignedBookings">Loading...</h4>
+                </div>
+                <i class="bi bi-check-circle text-success fs-3 d-none d-sm-block"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card warning">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="flex-grow-1">
+                    <h6 class="text-muted mb-1 small">Pending</h6>
+                    <h4 class="mb-0 fw-bold" id="pendingBookings">Loading...</h4>
+                </div>
+                <i class="bi bi-clock text-warning fs-3 d-none d-sm-block"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card danger">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="flex-grow-1">
+                    <h6 class="text-muted mb-1 small">Revenue</h6>
+                    <h4 class="mb-0 fw-bold" id="totalRevenue">Loading...</h4>
+                </div>
+                <i class="bi bi-currency-dollar text-info fs-3 d-none d-sm-block"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mobile-First Management Card -->
+<div class="card shadow">
+    <div class="card-header bg-white">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+            <h5 class="mb-0 d-flex align-items-center">
+                <i class="bi bi-table me-2"></i>
+                <span class="d-none d-sm-inline">Booking Management</span>
+                <span class="d-sm-none">Bookings</span>
+            </h5>
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-primary btn-sm" onclick="window.adminFunctions.refreshBookings()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    <span class="d-none d-md-inline">Refresh</span>
+                </button>
+                <button class="btn btn-success btn-sm" onclick="window.adminFunctions.exportData()">
+                    <i class="bi bi-download"></i>
+                    <span class="d-none d-md-inline">Export</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0 p-md-3">
+        <!-- Mobile-First Filters -->
+        <div class="p-3 border-bottom">
+            <div class="row g-2">
+                <div class="col-12 col-md-4">
+                    <input type="text" id="searchFilter" class="form-control form-control-sm"
+                           placeholder="Search..." onkeyup="window.adminFunctions.filterBookings()">
+                </div>
+                <div class="col-6 col-md-4">
+                    <select id="statusFilter" class="form-select form-select-sm" onchange="window.adminFunctions.filterBookings()">
+                        <option value="">All Status</option>
+                        <option value="Created">Created</option>
+                        <option value="PaymentPending">Payment Pending</option>
+                        <option value="PaymentConfirmed">Payment Confirmed</option>
+                        <option value="ExaminersContacted">Examiners Contacted</option>
+                        <option value="ExaminerAssigned">Examiner Assigned</option>
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-4">
+                    <input type="date" id="dateFilter" class="form-control form-control-sm" onchange="window.adminFunctions.filterBookings()">
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Card View / Desktop Table View -->
+        <div id="bookingsContainer">
+            <!-- Desktop Table -->
+            <div class="table-responsive d-none d-lg-block">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Student</th>
+                            <th>Email</th>
+                            <th>Exam Type</th>
+                            <th>Status</th>
+                            <th>Payment</th>
+                            <th>Examiner</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookingsTableBody">
+                        <tr>
+                            <td colspan="9" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <div class="mt-2">Loading bookings...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Cards -->
+            <div id="bookingsCards" class="d-lg-none">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div class="mt-2">Loading bookings...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+        `;
+
+        // Load data
+        try {
+            await Promise.all([loadBookings(), loadStatistics()]);
+            console.log('Admin dashboard loaded successfully');
+        } catch (error) {
+            console.error('Error loading admin dashboard:', error);
+            adminContent.innerHTML = `
+<div class="alert alert-danger">
+    <h5>Error Loading Dashboard</h5>
+    <p>There was an error loading the admin dashboard: ${error.message}</p>
+    <button class="btn btn-danger" onclick="window.loadAdminDashboard()">Try Again</button>
+</div>
+            `;
+        }
+    };
+
+    // Load statistics
+    async function loadStatistics() {
+        try {
+            console.log('Loading statistics...');
+            const response = await fetch(`${ADMIN_API_BASE}/Admin/dashboard-stats`);
+
+            if (response.ok) {
+                const stats = await response.json();
+                console.log('Statistics loaded:', stats);
+
+                const updateElement = (id, value, defaultValue = '0') => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = value || defaultValue;
+                    }
+                };
+
+                updateElement('totalBookings', stats.totalBookings || stats.TotalBookings);
+                updateElement('assignedBookings', stats.assignedBookings || stats.AssignedBookings);
+                updateElement('pendingBookings', stats.pendingBookings || stats.PendingBookings);
+                updateElement('totalRevenue', `$${stats.totalRevenue || stats.TotalRevenue || '0'}`);
+
+            } else {
+                console.error('Failed to load statistics:', response.status);
+                ['totalBookings', 'assignedBookings', 'pendingBookings'].forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) element.textContent = 'Error';
+                });
+            }
+        } catch (error) {
+            console.error('Error loading statistics:', error);
+        }
+    }
+
+    // Load bookings
+    async function loadBookings() {
+        try {
+            console.log('Loading bookings...');
+            const response = await fetch(`${ADMIN_API_BASE}/Admin/bookings`);
+
+            if (response.ok) {
+                allBookings = await response.json();
+                console.log('Bookings loaded:', allBookings.length);
+                displayBookings(allBookings);
+            } else {
+                console.error('Failed to load bookings:', response.status);
+                showBookingsError('Failed to load bookings');
+            }
+        } catch (error) {
+            console.error('Error loading bookings:', error);
+            showBookingsError('Network error loading bookings');
+        }
+    }
+
+    // Display bookings with responsive design
+    function displayBookings(bookings) {
+        const tbody = document.getElementById('bookingsTableBody');
+        const cardsContainer = document.getElementById('bookingsCards');
+
+        if (!bookings || bookings.length === 0) {
+            const emptyMessage = '<div class="text-center text-muted p-4">No bookings found</div>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No bookings found</td></tr>';
+            if (cardsContainer) cardsContainer.innerHTML = emptyMessage;
+            return;
+        }
+
+        // Desktop table view
+        if (tbody) {
+            tbody.innerHTML = bookings.map(booking => `
+<tr>
+    <td><code class="text-primary small">${booking.bookingId || booking.BookingId}</code></td>
+    <td class="text-nowrap">${booking.studentName || booking.StudentName}</td>
+    <td><small>${booking.studentEmail || booking.StudentEmail}</small></td>
+    <td><span class="badge bg-light text-dark small">${booking.examType || booking.ExamType || '-'}</span></td>
+    <td>${getStatusBadge(booking.status || booking.Status)}</td>
+    <td>
+        ${(booking.isPaid || booking.IsPaid) ?
+        '<span class="badge bg-success small">Paid</span>' :
+        '<span class="badge bg-warning small">Pending</span>'}
+    </td>
+    <td class="text-nowrap">${booking.assignedExaminerName || booking.AssignedExaminerName || '-'}</td>
+    <td><small>${new Date(booking.createdAt || booking.CreatedAt).toLocaleDateString()}</small></td>
+    <td>
+        <div class="btn-group" role="group">
+            <button class="btn btn-sm btn-outline-info" onclick="window.adminFunctions.viewDetails('${booking.bookingId || booking.BookingId}')" title="View Details">
+                <i class="bi bi-eye"></i>
+            </button>
+            ${(!booking.assignedExaminerName && !booking.AssignedExaminerName && (booking.isPaid || booking.IsPaid)) ?
+            `<button class="btn btn-sm btn-outline-danger" onclick="window.adminFunctions.processRefund('${booking.bookingId || booking.BookingId}')" title="Process Refund">
+                <i class="bi bi-cash"></i>
+            </button>` : ''}
+        </div>
+    </td>
+</tr>
+            `).join('');
+        }
+
+        // Mobile cards view
+        if (cardsContainer) {
+            cardsContainer.innerHTML = bookings.map(booking => `
+<div class="card mb-3 booking-card">
+    <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <h6 class="card-title mb-0 fw-bold">${booking.studentName || booking.StudentName}</h6>
+            ${getStatusBadge(booking.status || booking.Status)}
+        </div>
+
+        <div class="row g-2 mb-3">
+            <div class="col-6">
+                <small class="text-muted d-block">Booking ID</small>
+                <code class="text-primary small">${booking.bookingId || booking.BookingId}</code>
+            </div>
+            <div class="col-6">
+                <small class="text-muted d-block">Payment</small>
+                ${(booking.isPaid || booking.IsPaid) ?
+                '<span class="badge bg-success small">Paid</span>' :
+                '<span class="badge bg-warning small">Pending</span>'}
+            </div>
+            <div class="col-6">
+                <small class="text-muted d-block">Exam Type</small>
+                <span class="badge bg-light text-dark small">${booking.examType || booking.ExamType || '-'}</span>
+            </div>
+            <div class="col-6">
+                <small class="text-muted d-block">Created</small>
+                <small>${new Date(booking.createdAt || booking.CreatedAt).toLocaleDateString()}</small>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <small class="text-muted d-block">Email</small>
+            <small>${booking.studentEmail || booking.StudentEmail}</small>
+        </div>
+
+        ${(booking.assignedExaminerName || booking.AssignedExaminerName) ? `
+        <div class="mb-3">
+            <small class="text-muted d-block">Examiner</small>
+            <small>${booking.assignedExaminerName || booking.AssignedExaminerName}</small>
+        </div>
+        ` : ''}
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-info flex-grow-1" onclick="window.adminFunctions.viewDetails('${booking.bookingId || booking.BookingId}')">
+                <i class="bi bi-eye me-1"></i>Details
+            </button>
+            ${(!booking.assignedExaminerName && !booking.AssignedExaminerName && (booking.isPaid || booking.IsPaid)) ?
+            `<button class="btn btn-sm btn-outline-danger" onclick="window.adminFunctions.processRefund('${booking.bookingId || booking.BookingId}')" title="Process Refund">
+                <i class="bi bi-cash"></i>
+            </button>` : ''}
+        </div>
+    </div>
+</div>
+            `).join('');
+        }
+    }
+
+    function showBookingsError(message) {
+        const tbody = document.getElementById('bookingsTableBody');
+        const cardsContainer = document.getElementById('bookingsCards');
+
+        const errorMessage = `<div class="text-center text-danger p-4">${message}</div>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger">${message}</td></tr>`;
+        if (cardsContainer) cardsContainer.innerHTML = errorMessage;
+    }
+
+    // Get status badge
+    function getStatusBadge(status) {
+        const badges = {
+            'Created': '<span class="badge bg-secondary small">Created</span>',
+            'PaymentPending': '<span class="badge bg-warning small">Payment Pending</span>',
+            'PaymentConfirmed': '<span class="badge bg-info small">Payment Confirmed</span>',
+            'ExaminersContacted': '<span class="badge bg-info small">Examiners Contacted</span>',
+            'ExaminerAssigned': '<span class="badge bg-success small">Examiner Assigned</span>',
+            'Scheduled': '<span class="badge bg-primary small">Scheduled</span>',
+            'Completed': '<span class="badge bg-dark small">Completed</span>',
+            'Cancelled': '<span class="badge bg-danger small">Cancelled</span>',
+            'Refunded': '<span class="badge bg-secondary small">Refunded</span>'
+        };
+        return badges[status] || `<span class="badge bg-secondary small">${status}</span>`;
+    }
+
+    // Admin functions object
+    window.adminFunctions = {
+        filterBookings: function () {
+            const searchFilter = document.getElementById('searchFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            const dateFilter = document.getElementById('dateFilter');
+
+            let filtered = [...allBookings];
+
+            if (statusFilter && statusFilter.value) {
+                filtered = filtered.filter(b => (b.status || b.Status) === statusFilter.value);
+            }
+
+            if (dateFilter && dateFilter.value) {
+                filtered = filtered.filter(b => {
+                    const bookingDate = new Date(b.createdAt || b.CreatedAt).toDateString();
+                    const filterDate = new Date(dateFilter.value).toDateString();
+                    return bookingDate === filterDate;
+                });
+            }
+
+            if (searchFilter && searchFilter.value) {
+                const search = searchFilter.value.toLowerCase();
+                filtered = filtered.filter(b => {
+                    const bookingId = (b.bookingId || b.BookingId || '').toLowerCase();
+                    const studentName = (b.studentName || b.StudentName || '').toLowerCase();
+                    const studentEmail = (b.studentEmail || b.StudentEmail || '').toLowerCase();
+
+                    return bookingId.includes(search) ||
+                        studentName.includes(search) ||
+                        studentEmail.includes(search);
+                });
+            }
+
+            displayBookings(filtered);
+        },
+
+        refreshBookings: async function () {
+            console.log('Refreshing bookings...');
+            const refreshBtn = document.querySelector('button[onclick="window.adminFunctions.refreshBookings()"]');
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise spinner-border spinner-border-sm"></i> <span class="d-none d-md-inline">Refreshing...</span>';
+            }
+
+            try {
+                await Promise.all([loadBookings(), loadStatistics()]);
+            } catch (error) {
+                console.error('Error refreshing:', error);
+            } finally {
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                    refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> <span class="d-none d-md-inline">Refresh</span>';
+                }
+            }
+        },
+
+        exportData: function () {
+            if (!allBookings || allBookings.length === 0) {
+                alert('No data to export');
+                return;
+            }
+
+            const headers = ['Booking ID', 'Student Name', 'Email', 'Exam Type', 'Status', 'Payment', 'Examiner', 'Created'];
+            const rows = allBookings.map(b => [
+                b.bookingId || b.BookingId,
+                b.studentName || b.StudentName,
+                b.studentEmail || b.StudentEmail,
+                b.examType || b.ExamType || '',
+                b.status || b.Status,
+                (b.isPaid || b.IsPaid) ? 'Paid' : 'Pending',
+                b.assignedExaminerName || b.AssignedExaminerName || '',
+                new Date(b.createdAt || b.CreatedAt).toLocaleDateString()
+            ]);
+
+            let csv = headers.join(',') + '\n';
+            rows.forEach(row => {
+                csv += row.map(cell => `"${cell}"`).join(',') + '\n';
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bookings_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        },
+
+        viewDetails: function (bookingId) {
+            console.log(`Loading details for booking: ${bookingId}`);
+
+            fetch(`/api/Admin/examiner-responses/${bookingId}`)
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Received data:', data);
+
+                    const examinerResponses = data.examinerResponses || data.ExaminerResponses || [];
+                    const actionHistory = data.actionHistory || data.ActionHistory || [];
+                    const totalContacted = data.totalContacted || data.TotalContacted || 0;
+                    const totalResponded = data.totalResponded || data.TotalResponded || 0;
+                    const acceptedCount = data.acceptedCount || data.AcceptedCount || 0;
+                    const declinedCount = data.declinedCount || data.DeclinedCount || 0;
+
+                    let modalHtml = `
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Booking Details: ${bookingId}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Mobile-responsive statistics -->
+                <h6 class="border-bottom pb-2 mb-3">
+                    <i class="bi bi-graph-up me-2"></i>Statistics
+                </h6>
+                <div class="row mb-4 g-3">
+                    <div class="col-6 col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-primary mb-1">${totalContacted}</h4>
+                            <small class="text-muted">Contacted</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-info mb-1">${totalResponded}</h4>
+                            <small class="text-muted">Responded</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-success mb-1">${acceptedCount}</h4>
+                            <small class="text-muted">Accepted</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-danger mb-1">${declinedCount}</h4>
+                            <small class="text-muted">Declined</small>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="border-bottom pb-2 mb-3">
+                    <i class="bi bi-people me-2"></i>Examiner Responses
+                </h6>`;
+
+                if (examinerResponses && examinerResponses.length > 0) {
+                // Mobile-responsive examiner responses
+                modalHtml += `<div class="row g-3 mb-4">
+                    `;
+                    examinerResponses.forEach(r => {
+                    const examinerName = r.examinerName || r.ExaminerName || 'Unknown';
+                    const examinerEmail = r.examinerEmail || r.ExaminerEmail || '';
+                    const response = r.response || r.Response || 'NoResponse';
+                    const contactedAt = r.contactedAt || r.ContactedAt;
+                    const respondedAt = r.respondedAt || r.RespondedAt;
+                    const responseMessage = r.responseMessage || r.ResponseMessage || '-';
+                    const isWinner = r.isWinner || r.IsWinner || false;
+
+                    const statusBadge = response === 'Accepted' ?
+                    '<span class="badge bg-success">Accepted</span>' :
+                    response === 'Declined' ?
+                    '<span class="badge bg-danger">Declined</span>' :
+                    '<span class="badge bg-secondary">No Response</span>';
+
+                    modalHtml += `
+                    <div class="col-12 col-md-6">
+                        <div class="card h-100 ${isWinner ? 'border-success' : ''}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title mb-0">${examinerName}</h6>
+                                    ${isWinner ? '<i class="bi bi-trophy text-warning"></i>' : ''}
+                                </div>
+                                <p class="card-text small text-muted mb-2">${examinerEmail}</p>
+                                <div class="mb-2">${statusBadge}</div>
+                                <small class="text-muted d-block">
+                                    <strong>Contacted:</strong> ${contactedAt ? new Date(contactedAt).toLocaleString() : '-'}
+                                </small>
+                                <small class="text-muted d-block">
+                                    <strong>Responded:</strong> ${respondedAt ? new Date(respondedAt).toLocaleString() : '-'}
+                                </small>
+                                ${responseMessage !== '-' ? `<small class="text-muted d-block mt-2"><strong>Message:</strong> ${responseMessage}</small>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+                    });
+                    modalHtml += `
+                </div>`;
+                } else {
+                modalHtml += '<p class="text-muted">No examiner responses found</p>';
+                }
+
+                modalHtml += `<h6 class="border-bottom pb-2 mb-3"><i class="bi bi-clock-history me-2"></i>Action History</h6>`;
+
+                if (actionHistory && actionHistory.length > 0) {
+                modalHtml += '<div class="timeline" style="max-height: 300px; overflow-y: auto;">
+                    ';
+                    actionHistory.forEach(action => {
+                    const actionType = action.actionType || action.ActionType || 'Unknown';
+                    const description = action.description || action.Description || '';
+                    const details = action.details || action.Details || '';
+                    const createdAt = action.createdAt || action.CreatedAt;
+
+                    modalHtml += `
+                    <div class="mb-3 p-3 border-start border-3 border-primary bg-light">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <strong>${actionType}</strong>: ${description}
+                                ${details ? `<br><small class="text-muted">${details}</small>` : ''}
+                            </div>
+                            <small class="text-muted mt-1 mt-md-0">${createdAt ? new Date(createdAt).toLocaleString() : 'Unknown date'}</small>
+                        </div>
+                    </div>`;
+                    });
+                    modalHtml += '
+                </div>';
+                } else {
+                modalHtml += '<p class="text-muted">No action history found</p>';
+                }
+
+                modalHtml += `
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>`;
+
+                    // Remove old modal and add new one
+                    const oldModal = document.getElementById('detailsModal');
+                    if (oldModal) {
+                        oldModal.remove();
+                    }
+
+                    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+                    // Show modal
+                    const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+                    modal.show();
+                })
+                .catch(error => {
+                    console.error('Error loading details:', error);
+                    alert(`Failed to load booking details: ${error.message}`);
+                });
+        },
+
+        processRefund: async function (bookingId) {
+            if (!confirm(`Are you sure you want to process a refund for booking ${bookingId}?`)) return;
+
+            try {
+                const response = await fetch(`${ADMIN_API_BASE}/Admin/process-refund/${bookingId}`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    alert('Refund processed successfully');
+                    await window.adminFunctions.refreshBookings();
+                } else {
+                    const error = await response.text();
+                    alert(`Failed to process refund: ${error}`);
+                }
+            } catch (error) {
+                console.error('Error processing refund:', error);
+                alert('Error processing refund: Network error');
+            }
+        }
+    };
+
+})();
