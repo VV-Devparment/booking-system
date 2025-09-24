@@ -6,6 +6,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:;">
     <title>Aviation Checkride Booking System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/css/intlTelInput.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="styles-updated.css">
     <script src="https://js.stripe.com/v3/"></script>
@@ -80,29 +81,11 @@
                                         </div>
                                         <div class="col-md-6 mb-3">
                                             <label for="phone" class="form-label">Phone *</label>
-                                            <div class="input-group">
-                                                <select class="form-select" id="countryCode" style="max-width: 120px;">
-                                                    <option value="+1" selected>🇺🇸 +1</option>
-                                                    <option value="+44">🇬🇧 +44</option>
-                                                    <option value="+33">🇫🇷 +33</option>
-                                                    <option value="+49">🇩🇪 +49</option>
-                                                    <option value="+34">🇪🇸 +34</option>
-                                                    <option value="+39">🇮🇹 +39</option>
-                                                    <option value="+81">🇯🇵 +81</option>
-                                                    <option value="+86">🇨🇳 +86</option>
-                                                    <option value="+91">🇮🇳 +91</option>
-                                                    <option value="+61">🇦🇺 +61</option>
-                                                    <option value="+55">🇧🇷 +55</option>
-                                                    <option value="+52">🇲🇽 +52</option>
-                                                    <option value="+7">🇷🇺 +7</option>
-                                                    <option value="+380">🇺🇦 +380</option>
-                                                </select>
-                                                <input type="tel" class="form-control" id="phone"
-                                                       placeholder="(555) 123-4567"
-                                                       pattern="[0-9\s\(\)\-]+" required>
-                                            </div>
+                                            <input type="tel" class="form-control" id="phone" required>
                                         </div>
                                     </div>
+
+
 
                                     <hr class="my-4">
                                     <h5 class="mb-3">Aircraft & Location</h5>
@@ -400,6 +383,36 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="app-with-payment.js"></script>
     <script src="admin.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/intlTelInput.min.js"></script>
+    <script>
+        // Ініціалізація international phone input
+        const phoneInput = document.querySelector("#phone");
+        const iti = window.intlTelInput(phoneInput, {
+            preferredCountries: ["us", "ca", "gb", "au", "ua"],
+            separateDialCode: true,
+            utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/utils.js",
+            customContainer: "form-control p-0"
+        });
+
+        // Робимо iti глобальним для доступу з інших скриптів
+        window.phoneIti = iti;
+
+        // Форсуємо стилі
+        const itiElement = document.querySelector('.iti');
+        if (itiElement) {
+            itiElement.style.width = '100%';
+            itiElement.style.display = 'block';
+        }
+
+        const phoneInputElement = document.querySelector('.iti input');
+        if (phoneInputElement) {
+            phoneInputElement.style.width = '100%';
+            phoneInputElement.style.paddingLeft = '80px';
+            phoneInputElement.style.height = 'calc(2.5rem + 2px)';
+        }
+    </script>
+
+
     <script>
         // Toggle date range visibility
         function toggleDateRange() {

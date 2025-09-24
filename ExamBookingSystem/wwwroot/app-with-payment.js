@@ -27,7 +27,7 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
         studentFirstName: document.getElementById('firstName').value,
         studentLastName: document.getElementById('lastName').value,
         studentEmail: document.getElementById('email').value,
-        studentPhone: document.getElementById('countryCode').value + document.getElementById('phone').value.replace(/\D/g, ''),
+        studentPhone: window.phoneIti ? window.phoneIti.getNumber() : document.getElementById('phone').value,
 
         // Aircraft and exam info
         aircraftType: document.getElementById('aircraftType').value,
@@ -71,6 +71,10 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
         if (!value) {
             console.error(`Missing required field: ${field}`);
             alert(`Please fill in: ${field}`);
+            submitBtn.disabled = false;
+            submitText.textContent = 'Proceed to Payment ($100)';
+            loadingSpinner.classList.add('d-none');
+            e.target.dataset.submitting = 'false';
             return;
         }
     }
@@ -216,6 +220,7 @@ function showActiveBookings() {
     loadActiveBookings();
 }
 
+// ОНОВЛЕНА ФУНКЦІЯ - зі статусами Free/Taken і onclick handler
 async function loadActiveBookings() {
     const listDiv = document.getElementById('activeBookingsList');
     listDiv.innerHTML = '<div class="spinner-border"></div> Loading...';
@@ -234,10 +239,30 @@ async function loadActiveBookings() {
             html += '<thead><tr><th>Booking ID</th><th>Student</th><th>Email</th><th>Exam Type</th><th>Status</th><th>Paid</th><th>Created</th></tr></thead><tbody>';
 
             bookings.forEach(booking => {
-                const statusBadge = getStatusBadge(booking.status);
-                const paidBadge = booking.isPaid ? '<span class="badge bg-success">Paid</span>' : '<span class="badge bg-warning">Pending</span>';
+                // Визначаємо статус як Free або Taken
+                const isFree = booking.status === 'Created' ||
+                    booking.status === 'PaymentPending' ||
+                    booking.status === 'PaymentConfirmed' ||
+                    booking.status === 'ExaminersContacted';
+
+                const statusBadge = isFree
+                    ? '<span class="badge bg-success">Free</span>'
+                    : '<span class="badge bg-danger">Taken</span>';
+
+                const paidBadge = booking.isPaid
+                    ? '<span class="badge bg-success">Paid</span>'
+                    : '<span class="badge bg-warning">Pending</span>';
+
+                // Екрануємо дані для безпечної передачі в onclick
+                const bookingJson = JSON.stringify({
+                    bookingId: booking.bookingId,
+                    studentName: booking.studentName,
+                    studentEmail: booking.studentEmail
+                }).replace(/"/g, '&quot;');
+
+                // Додаємо onclick handler до рядка
                 html += `
-                    <tr>
+                    <tr style="cursor: pointer;" onclick='fillExaminerForm(${bookingJson})'>
                         <td><code>${booking.bookingId}</code></td>
                         <td>${booking.studentName}</td>
                         <td>${booking.studentEmail}</td>
@@ -259,21 +284,43 @@ async function loadActiveBookings() {
     }
 }
 
+// ОНОВЛЕНА ФУНКЦІЯ - повертає Free/Taken badges
 function getStatusBadge(status) {
-    const badges = {
-        'Created': '<span class="badge bg-secondary">Created</span>',
-        'PaymentPending': '<span class="badge bg-warning">Payment Pending</span>',
-        'PaymentConfirmed': '<span class="badge bg-info">Payment Confirmed</span>',
-        'ExaminersContacted': '<span class="badge bg-info">Examiners Contacted</span>',
-        'ExaminerAssigned': '<span class="badge bg-success">Examiner Assigned</span>',
-        'Scheduled': '<span class="badge bg-primary">Scheduled</span>',
-        'Completed': '<span class="badge bg-dark">Completed</span>',
-        'Cancelled': '<span class="badge bg-danger">Cancelled</span>'
-    };
-    return badges[status] || `<span class="badge bg-secondary">${status}</span>`;
+    if (status === 'Created' || status === 'PaymentPending' ||
+        status === 'PaymentConfirmed' || status === 'ExaminersContacted') {
+        return '<span class="badge bg-success">Free</span>';
+    } else {
+        return '<span class="badge bg-danger">Taken</span>';
+    }
 }
 
-// Додайте цю функцію в кінець файлу:
+// НОВА ФУНКЦІЯ - автозаповнення форми при кліку
+function fillExaminerForm(booking) {
+    // Заповнюємо поля форми
+    document.getElementById('bookingId').value = booking.bookingId;
+    document.getElementById('studentName').value = booking.studentName;
+    document.getElementById('studentEmail').value = booking.studentEmail;
+
+    // Скролимо до форми відповіді
+    const formHeader = document.querySelector('.card-header.bg-gradient-info');
+    if (formHeader) {
+        formHeader.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+        });
+    }
+
+    // Підсвічуємо форму на секунду
+    const form = document.querySelector('#examinerResponseForm');
+    if (form && form.parentElement) {
+        form.parentElement.style.boxShadow = '0 0 20px rgba(0,123,255,0.5)';
+        form.parentElement.style.transition = 'box-shadow 0.3s ease';
+        setTimeout(() => {
+            form.parentElement.style.boxShadow = '';
+        }, 1500);
+    }
+}
+
 async function loadFilteredBookings() {
     const email = document.getElementById('examinerEmailFilter').value;
     const examType = document.getElementById('examTypeFilter').value;
@@ -345,7 +392,6 @@ async function loadFilteredBookings() {
     }
 }
 
-// Додайте функцію для заповнення форми відповіді:
 function fillResponseForm(bookingId, studentName) {
     document.getElementById('bookingId').value = bookingId;
     document.getElementById('studentName').value = studentName;
