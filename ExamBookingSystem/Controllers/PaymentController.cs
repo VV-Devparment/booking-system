@@ -394,7 +394,11 @@ namespace ExamBookingSystem.Controllers
                     examiner.Name,
                     $"{request.StudentFirstName} {request.StudentLastName}",
                     request.CheckRideType,
-                    request.StartDate ?? DateTime.UtcNow.AddDays(7));
+                    request.StartDate ?? DateTime.UtcNow.AddDays(7),
+                    request.EndDate,
+                    request.FtnNumber,
+                    request.AdditionalNotes,
+                    request.WillingToFly);
 
                 if (success)
                 {

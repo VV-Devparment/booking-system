@@ -121,59 +121,83 @@ namespace ExamBookingSystem.Services
         }
 
         public async Task<bool> SendExaminerContactEmailAsync(
-            string examinerEmail,
-            string examinerName,
-            string studentName,
-            string examType,
-            DateTime preferredDate)
+    string examinerEmail,
+    string examinerName,
+    string studentName,
+    string examType,
+    DateTime preferredDate,
+    DateTime? endDate = null,
+    string? ftnNumber = null,
+    string? additionalNotes = null,
+    bool willingToTravel = false)
         {
             var subject = $"🎓 New Exam Request - {examType}";
 
+            var dateRange = endDate.HasValue && endDate.Value != preferredDate
+                ? $"{preferredDate:MMM dd} - {endDate.Value:MMM dd, yyyy}"
+                : $"{preferredDate:dddd, MMMM dd, yyyy}";
+
             var body = $@"
-                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-                    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; color: white; border-radius: 10px 10px 0 0;'>
-                        <h2 style='margin: 0;'>New Exam Request</h2>
-                    </div>
-                    
-                    <div style='padding: 20px; background: #f8f9fa; border: 1px solid #dee2e6; border-top: none;'>
-                        <p>Hello <strong>{examinerName}</strong>,</p>
-                        
-                        <p>You have received a new exam request:</p>
-                        
-                        <div style='background: white; padding: 15px; border-radius: 8px; margin: 20px 0;'>
-                            <table style='width: 100%;'>
-                                <tr>
-                                    <td style='padding: 8px 0;'><strong>👤 Student:</strong></td>
-                                    <td>{studentName}</td>
-                                </tr>
-                                <tr>
-                                    <td style='padding: 8px 0;'><strong>📚 Exam Type:</strong></td>
-                                    <td>{examType}</td>
-                                </tr>
-                                <tr>
-                                    <td style='padding: 8px 0;'><strong>📅 Preferred Date:</strong></td>
-                                    <td>{preferredDate:dddd, MMMM dd, yyyy}</td>
-                                </tr>
-                            </table>
-                        </div>
-                        
-                        <div style='background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin: 20px 0;'>
-                            <p style='margin: 0; color: #856404;'>
-                                <strong>⚡ IMPORTANT:</strong> First examiner to accept wins! Please respond quickly if you're available.
-                            </p>
-                        </div>
-                        
-                        <p>Please use the API endpoint to respond with your availability.</p>
-                        
-                        <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 12px;'>
-                            <p>This is an automated message from Exam Booking System.</p>
-                        </div>
-                    </div>
-                </div>";
+        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
+            <div style='background: linear-gradient(135deg, #5CADD3 0%, #2c3e50 100%); padding: 20px; color: white; border-radius: 10px 10px 0 0; text-align: center;'>
+                <img src='https://yourdomain.com/jumpseat-logo.png' alt='JUMPSEAT' style='height: 50px; margin-bottom: 10px;'>
+                <h2 style='margin: 0;'>New Exam Request</h2>
+            </div>
+            
+            <div style='padding: 20px; background: #f8f9fa; border: 1px solid #dee2e6; border-top: none;'>
+                <p>Hello <strong>{examinerName}</strong>,</p>
+                
+                <p>You have received a new exam request:</p>
+                
+                <div style='background: white; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                    <table style='width: 100%;'>
+                        <tr>
+                            <td style='padding: 8px 0;'><strong>👤 Student:</strong></td>
+                            <td>{studentName}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 8px 0;'><strong>📚 Exam Type:</strong></td>
+                            <td>{examType}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 8px 0;'><strong>📅 Availability:</strong></td>
+                            <td>{dateRange}</td>
+                        </tr>
+                        {(!string.IsNullOrEmpty(ftnNumber) ? $@"
+                        <tr>
+                            <td style='padding: 8px 0;'><strong>📋 FTN Number:</strong></td>
+                            <td>{ftnNumber}</td>
+                        </tr>" : "")}
+                        <tr>
+                            <td style='padding: 8px 0;'><strong>✈️ Willing to Travel:</strong></td>
+                            <td>{(willingToTravel ? "Yes" : "No")}</td>
+                        </tr>
+                        {(!string.IsNullOrEmpty(additionalNotes) ? $@"
+                        <tr>
+                            <td style='padding: 8px 0;' valign='top'><strong>📝 Additional Notes:</strong></td>
+                            <td>{additionalNotes}</td>
+                        </tr>" : "")}
+                    </table>
+                </div>
+                
+                <div style='background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                    <p style='margin: 0; color: #0c5460;'>
+                        <strong>⚡ IMPORTANT:</strong> First examiner to accept wins! Please respond quickly if you're available.
+                    </p>
+                </div>
+                
+                <p>Please use the examiner portal to respond with your availability, venue details, and pricing.</p>
+                
+                <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 12px;'>
+                    <p>This is an automated message from JUMPSEAT Team.<br>
+                    Do not reply to this email.</p>
+                </div>
+            </div>
+        </div>";
 
             _logger.LogInformation($"📤 Sending examiner contact email to {examinerName} ({examinerEmail})");
-            var result = await SendEmailAsync(examinerEmail, subject, body, "Exam Booking System");
-            
+            var result = await SendEmailAsync(examinerEmail, subject, body, "JUMPSEAT Team");
+
             if (result)
             {
                 _logger.LogInformation($"✅ Examiner contact email sent successfully");
@@ -182,23 +206,34 @@ namespace ExamBookingSystem.Services
             {
                 _logger.LogWarning($"❌ Failed to send examiner contact email");
             }
-            
+
             return result;
         }
 
         public async Task<bool> SendStudentConfirmationEmailAsync(
-            string studentEmail,
-            string studentName,
-            string examinerName,
-            DateTime scheduledDate)
+    string studentEmail,
+    string studentName,
+    string examinerName,
+    DateTime scheduledDate,
+    string? examinerEmail = null,
+    string? examinerPhone = null,
+    string? venueDetails = null,
+    string? examinerMessage = null,
+    decimal? price = null)
         {
             var subject = "✅ Exam Scheduled - Confirmation";
 
             var body = $@"
-                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-                    <div style='background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 20px; color: white; border-radius: 10px 10px 0 0;'>
-                        <h2 style='margin: 0;'>✅ Exam Confirmed!</h2>
-                    </div>
+    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
+        <div style='background: linear-gradient(135deg, #5CADD3 0%, #2c3e50 100%); padding: 20px; color: white; border-radius: 10px 10px 0 0; text-align: center;'>
+            <img src='https://yourdomain.com/jumpseat-logo.png' alt='JUMPSEAT' style='height: 50px; margin-bottom: 10px;'>
+            <h2 style='margin: 0;'>✅ Exam Confirmed!</h2>
+        </div>
+        
+        <div style='padding: 20px; background: #f8f9fa; border: 1px solid #dee2e6; border-top: none;'>
+            <div style='background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 5px; margin-bottom: 20px;'>
+                <strong>⚠️ IMPORTANT:</strong> Do not reply to this email. Contact your examiner directly using the information below.
+            </div>
                     
                     <div style='padding: 20px; background: #f8f9fa; border: 1px solid #dee2e6; border-top: none;'>
                         <p>Hello <strong>{studentName}</strong>,</p>
@@ -230,12 +265,14 @@ namespace ExamBookingSystem.Services
                         </div>
                         
                         <div style='background: #f0f0f0; padding: 15px; border-radius: 8px; margin: 20px 0;'>
-                            <h4 style='margin-top: 0;'>📝 What to bring:</h4>
-                            <ul style='margin: 0; padding-left: 20px;'>
-                                <li>Valid ID document</li>
-                                <li>Any required paperwork</li>
-                                <li>Pen and paper for notes</li>
-                            </ul>
+                            <h4 style='margin-top: 0;'>📝 Important Reminders:</h4>
+<ul style='margin: 0; padding-left: 20px;'>
+    <li>Bring logbook, aircraft documents, medical certificate and any other required paperwork</li>
+    <li>Complete your IACRA ASAP (within 72 hours of test) to avoid cancellation of check</li>
+    <li>Payment will be processed at the beginning of the test</li>
+    <li>Arrive at least 15 minutes early</li>
+    <li>The examiner will contact you with any questions related to case of events/flight planning</li>
+</ul>>
                         </div>
                         
                         <p>If you need to reschedule or have any questions, please contact us as soon as possible.</p>
@@ -243,13 +280,15 @@ namespace ExamBookingSystem.Services
                         <p>Good luck with your exam!</p>
                         
                         <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 12px;'>
-                            <p>Best regards,<br>Exam Booking System Team</p>
-                        </div>
+    <p>Best regards,<br>
+    JUMPSEAT Team<br><br>
+    This is an automated message. Do not reply to this email.</p>
+</div>
                     </div>
                 </div>";
 
             _logger.LogInformation($"📤 Sending confirmation email to {studentName} ({studentEmail})");
-            var result = await SendEmailAsync(studentEmail, subject, body, "Exam Booking System");
+            var result = await SendEmailAsync(studentEmail, subject, body, "JUMPSEAT");
             
             if (result)
             {

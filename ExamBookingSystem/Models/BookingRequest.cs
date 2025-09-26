@@ -50,7 +50,19 @@ namespace ExamBookingSystem.Models
         public string? PreferredTime { get; set; }
 
         public string? SpecialRequirements { get; set; }
+        // Нові поля для розширеної функціональності
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string? FtnNumber { get; set; }
+        public string? ExamId { get; set; }
+        public bool WillingToTravel { get; set; }
+        public string? AdditionalNotes { get; set; }
 
+        // Поля від екзаменатора
+        public string? VenueDetails { get; set; }
+        public decimal? ExaminerPrice { get; set; }
+        public string? ExaminerPhone { get; set; }
+        public string? ExaminerMessage { get; set; }
         public BookingStatus Status { get; set; } = BookingStatus.Created;
 
         // Payment інформація для майбутньої інтеграції Stripe

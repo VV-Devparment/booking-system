@@ -168,10 +168,15 @@ namespace ExamBookingSystem.Controllers
                     {
                         // Send confirmation email to student
                         var emailResult = await _emailService.SendStudentConfirmationEmailAsync(
-                            response.StudentEmail,
-                            response.StudentName,
-                            response.ExaminerName,
-                            response.ProposedDateTime ?? DateTime.UtcNow.AddDays(7));
+    response.StudentEmail,
+    response.StudentName,
+    response.ExaminerName,
+    response.ProposedDateTime ?? DateTime.UtcNow.AddDays(7),
+    response.ExaminerEmail,
+    response.ExaminerPhone,
+    response.VenueDetails,
+    response.ResponseMessage,
+    response.ExaminerPrice);
 
                         if (emailResult)
                         {
@@ -517,11 +522,15 @@ namespace ExamBookingSystem.Controllers
                 _logger.LogInformation($"Contacting examiner {examiner.Name} ({examiner.Email}) for booking {bookingId}");
 
                 var success = await _emailService.SendExaminerContactEmailAsync(
-                    examiner.Email,
-                    examiner.Name,
-                    $"{request.StudentFirstName} {request.StudentLastName}",
-                    request.CheckRideType,
-                    request.StartDate ?? DateTime.UtcNow.AddDays(7));
+      examiner.Email,
+      examiner.Name,
+      $"{request.StudentFirstName} {request.StudentLastName}",
+      request.CheckRideType,
+      request.StartDate ?? DateTime.UtcNow.AddDays(7),
+      request.EndDate,
+      request.FtnNumber,
+      request.AdditionalNotes,
+      request.WillingToFly);
 
                 if (success)
                 {
@@ -651,17 +660,20 @@ namespace ExamBookingSystem.Controllers
                 var bookings = await query
                     .OrderBy(b => b.PreferredDate)
                     .Take(20)
-                    .Select(b => new
-                    {
-                        BookingId = $"BK{b.Id:D6}",
-                        StudentName = $"{b.StudentFirstName} {b.StudentLastName}",
-                        ExamType = b.ExamType,
-                        Location = b.StudentAddress,
-                        PreferredDate = b.PreferredDate,
-                        SpecialRequirements = b.SpecialRequirements,
-                        CreatedAt = b.CreatedAt,
-                        DaysWaiting = (int)(DateTime.UtcNow - b.CreatedAt).TotalDays
-                    })
+                   .Select(b => new
+                   {
+                       BookingId = $"BK{b.Id:D6}",
+                       StudentName = $"{b.StudentFirstName} {b.StudentLastName}",
+                       ExamType = b.ExamType,
+                       Location = b.StudentAddress,
+                       PreferredDate = b.PreferredDate,
+                       StartDate = b.StartDate,
+                       EndDate = b.EndDate,
+                       WillingToTravel = b.WillingToTravel,
+                       SpecialRequirements = b.SpecialRequirements,
+                       CreatedAt = b.CreatedAt,
+                       DaysWaiting = (int)(DateTime.UtcNow - b.CreatedAt).TotalDays
+                   })
                     .ToListAsync();
 
                 _logger.LogInformation($"Returning {bookings.Count} bookings");

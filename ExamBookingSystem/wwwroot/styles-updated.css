@@ -138,3 +138,36 @@
             border-color: #667eea;
             box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
         }
+/* Стилі для international tel input */
+.iti {
+    width: 100%;
+}
+
+.iti__flag-container {
+    background: white;
+}
+
+.iti input {
+    width: 100%;
+    padding: 10px 15px;
+    padding-left: 80px !important;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    height: calc(2.5rem + 2px);
+}
+
+    .iti input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        outline: none;
+    }
+
+.iti__selected-flag {
+    padding: 0 10px;
+}
+
+.iti__country-list {
+    max-height: 200px;
+    overflow-y: auto;
+}

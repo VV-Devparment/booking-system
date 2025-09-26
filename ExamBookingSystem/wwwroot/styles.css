@@ -1,13 +1,26 @@
 ﻿:root {
-    --primary: #5e72e4;
-    --secondary: #8392ab;
-    --success: #2dce89;
-    --info: #11cdef;
-    --warning: #fb6340;
-    --danger: #f5365c;
-    --light: #f6f9fc;
-    --dark: #32325d;
+    --primary: #5CADD3; /* Блакитний з логотипу */
+    --secondary: #2c3e50; /* Темно-синій фон */
+    --dark: #000000;
+    --light: #ffffff;
 }
+
+.navbar {
+    background: var(--secondary) !important;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #5CADD3 0%, #2c3e50 100%) !important;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #5CADD3 0%, #4a90b8 100%);
+    border: none;
+}
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #4a90b8 0%, #3a7098 100%);
+    }
 
 * {
     transition: all 0.15s ease;
@@ -20,12 +33,8 @@ body {
 }
 
 /* Navbar */
-.navbar {
-    background: rgba(255, 255, 255, 0.95) !important;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
-    padding: 1rem 0;
-}
+
+
 
 .navbar-brand {
     color: var(--primary) !important;
@@ -107,10 +116,7 @@ body {
         box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
     }
 
-.btn-primary {
-    background: linear-gradient(87deg, var(--primary) 0, #825ee4 100%);
-    color: white;
-}
+
 
 .btn-info {
     background: linear-gradient(87deg, var(--info) 0, #1171ef 100%);
