@@ -226,7 +226,7 @@ namespace ExamBookingSystem.Services
             var body = $@"
     <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
         <div style='background: linear-gradient(135deg, #5CADD3 0%, #2c3e50 100%); padding: 20px; color: white; border-radius: 10px 10px 0 0; text-align: center;'>
-            <img src='https://yourdomain.com/jumpseat-logo.png' alt='JUMPSEAT' style='height: 50px; margin-bottom: 10px;'>
+            <img src='jumpseat-logo.jpg' alt='JUMPSEAT' style='height: 50px; margin-bottom: 10px;'>
             <h2 style='margin: 0;'>✅ Exam Confirmed!</h2>
         </div>
         
