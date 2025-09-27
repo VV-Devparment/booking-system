@@ -1,5 +1,6 @@
 ﻿using BCrypt.Net;
 using ExamBookingSystem.Data;
+using ExamBookingSystem.Models;
 using ExamBookingSystem.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -181,6 +182,8 @@ namespace ExamBookingSystem.Controllers
         {
             try
             {
+                _logger.LogInformation($"Processing refund request for booking {bookingId}");
+
                 if (!bookingId.StartsWith("BK") || !int.TryParse(bookingId.Substring(2), out int id))
                     return BadRequest("Invalid booking ID");
 
@@ -191,63 +194,148 @@ namespace ExamBookingSystem.Controllers
                     return NotFound("Booking not found");
 
                 if (!booking.IsPaid)
-                    return BadRequest("Booking is not paid");
+                    return BadRequest("Booking is not paid - cannot refund");
 
                 if (booking.Status == Models.BookingStatus.Refunded)
                     return BadRequest("Booking already refunded");
 
-                // Process Stripe refund
-                if (!string.IsNullOrEmpty(booking.PaymentIntentId))
+                // Якщо немає PaymentIntentId - можливо старий booking
+                if (string.IsNullOrEmpty(booking.PaymentIntentId))
                 {
-                    var refundAmount = refundRequest?.Amount ?? booking.Amount;
-                    var refundReason = refundRequest?.Reason ?? "No examiner available";
+                    _logger.LogWarning($"No PaymentIntentId for booking {bookingId} - processing manual refund");
 
-                    var refundSuccess = await _stripeService.ProcessRefundAsync(
+                    // Оновлюємо статус без Stripe refund
+                    booking.Status = Models.BookingStatus.Refunded;
+                    booking.UpdatedAt = DateTime.UtcNow;
+
+                    var actionLog = new Models.ActionLog
+                    {
+                        BookingRequestId = booking.Id,
+                        ActionType = Models.ActionType.RefundProcessed,
+                        Description = $"Manual refund (no payment intent): ${booking.Amount}",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.ActionLogs.Add(actionLog);
+                    await _context.SaveChangesAsync();
+
+                    return Ok(new
+                    {
+                        message = "Manual refund recorded (no Stripe payment found)",
+                        refundAmount = booking.Amount,
+                        bookingId = bookingId,
+                        manual = true
+                    });
+                }
+
+                // Спробуємо зробити refund через Stripe
+                var refundAmount = refundRequest?.Amount ?? booking.Amount;
+                var refundReason = refundRequest?.Reason ?? "No examiner available";
+
+                _logger.LogInformation($"Initiating Stripe refund: PaymentIntent={booking.PaymentIntentId}, Amount=${refundAmount}");
+
+                bool refundSuccess = false;
+                string refundError = "";
+
+                try
+                {
+                    refundSuccess = await _stripeService.ProcessRefundAsync(
                         booking.PaymentIntentId,
                         refundAmount,
                         refundReason);
-
-                    if (!refundSuccess)
-                    {
-                        return StatusCode(500, "Failed to process Stripe refund");
-                    }
+                }
+                catch (Exception stripeEx)
+                {
+                    _logger.LogError(stripeEx, "Stripe refund exception");
+                    refundError = stripeEx.Message;
                 }
 
-                // Update booking status
+                if (!refundSuccess)
+                {
+                    // Якщо Stripe refund не вдався, запитаємо користувача чи хоче він зробити manual refund
+                    return BadRequest(new
+                    {
+                        message = "Stripe refund failed. Payment may be too old or already refunded.",
+                        error = refundError,
+                        suggestion = "You can mark this as manually refunded if you process the refund outside the system.",
+                        bookingId = bookingId
+                    });
+                }
+
+                // Оновлюємо статус в базі даних
                 booking.Status = Models.BookingStatus.Refunded;
                 booking.UpdatedAt = DateTime.UtcNow;
 
-                // Add action log
-                var actionLog = new Models.ActionLog
+                // Додаємо лог
+                var successLog = new Models.ActionLog
                 {
                     BookingRequestId = booking.Id,
                     ActionType = Models.ActionType.RefundProcessed,
-                    Description = $"Refund processed: {refundRequest?.Reason ?? "Manual refund"}",
+                    Description = $"Stripe refund processed: ${refundAmount} - {refundReason}",
                     Details = System.Text.Json.JsonSerializer.Serialize(new
                     {
-                        Amount = booking.Amount,
+                        Amount = refundAmount,
                         PaymentIntentId = booking.PaymentIntentId,
-                        Reason = refundRequest?.Reason
+                        Reason = refundReason,
+                        ProcessedAt = DateTime.UtcNow
                     }),
                     CreatedAt = DateTime.UtcNow
                 };
-                _context.ActionLogs.Add(actionLog);
+                _context.ActionLogs.Add(successLog);
 
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation($"Refund processed for booking {bookingId}");
+                _logger.LogInformation($"✅ Refund completed for booking {bookingId}: ${refundAmount}");
+
+                // Відправити email студенту про повернення
+                if (!string.IsNullOrEmpty(booking.StudentEmail))
+                {
+                    await SendRefundNotificationEmail(booking, refundAmount, refundReason);
+                }
 
                 return Ok(new
                 {
-                    message = "Refund processed successfully",
-                    refundAmount = booking.Amount,
-                    bookingId = bookingId
+                    message = "Refund processed successfully through Stripe",
+                    refundAmount = refundAmount,
+                    bookingId = bookingId,
+                    paymentIntentId = booking.PaymentIntentId,
+                    stripe = true
                 });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error processing refund for {bookingId}");
-                return StatusCode(500, "Failed to process refund");
+                return StatusCode(500, $"Failed to process refund: {ex.Message}");
+            }
+        }
+
+        // Додайте метод для відправки email про повернення
+        private async Task SendRefundNotificationEmail(BookingRequest booking, decimal amount, string reason)
+        {
+            try
+            {
+                var emailService = HttpContext.RequestServices.GetService<IEmailService>();
+                if (emailService != null)
+                {
+                    var subject = "Refund Processed - Exam Booking";
+                    var body = $@"
+                <h3>Refund Confirmation</h3>
+                <p>Dear {booking.StudentFirstName} {booking.StudentLastName},</p>
+                <p>Your refund has been processed successfully.</p>
+                <ul>
+                    <li>Booking ID: BK{booking.Id:D6}</li>
+                    <li>Refund Amount: ${amount}</li>
+                    <li>Reason: {reason}</li>
+                </ul>
+                <p>The refund should appear on your card within 5-10 business days.</p>
+                <p>Best regards,<br>JUMPSEAT Team</p>
+            ";
+
+                    await emailService.SendEmailAsync(booking.StudentEmail, subject, body);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send refund notification email");
             }
         }
 
@@ -363,6 +451,52 @@ namespace ExamBookingSystem.Controllers
             {
                 _logger.LogError(ex, "Error creating admin");
                 return StatusCode(500, "Failed to create admin");
+            }
+        }
+
+        [HttpPost("manual-refund/{bookingId}")]
+        public async Task<ActionResult> ManualRefund(string bookingId)
+        {
+            try
+            {
+                if (!bookingId.StartsWith("BK") || !int.TryParse(bookingId.Substring(2), out int id))
+                    return BadRequest("Invalid booking ID");
+
+                var booking = await _context.BookingRequests
+                    .FirstOrDefaultAsync(b => b.Id == id);
+
+                if (booking == null)
+                    return NotFound("Booking not found");
+
+                if (booking.Status == Models.BookingStatus.Refunded)
+                    return BadRequest("Booking already marked as refunded");
+
+                // Оновлюємо статус
+                booking.Status = Models.BookingStatus.Refunded;
+                booking.UpdatedAt = DateTime.UtcNow;
+
+                // Додаємо лог
+                var actionLog = new Models.ActionLog
+                {
+                    BookingRequestId = booking.Id,
+                    ActionType = Models.ActionType.RefundProcessed,
+                    Description = "Manual refund processed by admin",
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.ActionLogs.Add(actionLog);
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "Booking marked as refunded (manual)",
+                    bookingId = bookingId
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error processing manual refund for {bookingId}");
+                return StatusCode(500, ex.Message);
             }
         }
     }

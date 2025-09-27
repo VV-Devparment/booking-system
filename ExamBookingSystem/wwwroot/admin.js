@@ -555,20 +555,45 @@
             if (!confirm(`Are you sure you want to process a refund for booking ${bookingId}?`)) return;
 
             try {
-                const response = await fetch(`${ADMIN_API_BASE}/Admin/process-refund/${bookingId}`, {
-                    method: 'POST'
+                const response = await fetch(`/api/Admin/process-refund/${bookingId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        reason: "No examiner available"
+                    })
                 });
 
                 if (response.ok) {
-                    alert('Refund processed successfully');
+                    const result = await response.json();
+                    if (result.manual) {
+                        alert(`Manual refund recorded.\nAmount: $${result.refundAmount}\n\nNote: No Stripe payment found, please process refund manually.`);
+                    } else {
+                        alert(`Refund processed successfully!\nAmount: $${result.refundAmount}`);
+                    }
                     await window.adminFunctions.refreshBookings();
+                } else if (response.status === 400) {
+                    const error = await response.json();
+                    if (error.suggestion && confirm(`${error.message}\n\nDo you want to mark this as manually refunded?`)) {
+                        // Викликаємо manual refund
+                        const manualResponse = await fetch(`/api/Admin/manual-refund/${bookingId}`, {
+                            method: 'POST'
+                        });
+                        if (manualResponse.ok) {
+                            alert('Booking marked as manually refunded');
+                            await window.adminFunctions.refreshBookings();
+                        }
+                    } else {
+                        alert(`Failed to process refund: ${error.message || 'Unknown error'}`);
+                    }
                 } else {
                     const error = await response.text();
                     alert(`Failed to process refund: ${error}`);
                 }
             } catch (error) {
                 console.error('Error processing refund:', error);
-                alert('Error processing refund: Network error');
+                alert(`Error: ${error.message}`);
             }
         }
     };

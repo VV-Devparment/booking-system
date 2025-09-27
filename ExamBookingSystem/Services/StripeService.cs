@@ -62,34 +62,69 @@ namespace ExamBookingSystem.Services
         {
             try
             {
-                _logger.LogInformation($"Processing refund for payment intent: {paymentIntentId}");
+                _logger.LogInformation($"Processing Stripe refund for payment intent: {paymentIntentId}, amount: ${amount}");
 
+                // Перевіряємо чи PaymentIntent існує
+                var paymentIntentService = new PaymentIntentService();
+                var paymentIntent = await paymentIntentService.GetAsync(paymentIntentId);
+
+                if (paymentIntent == null)
+                {
+                    _logger.LogError($"Payment intent not found: {paymentIntentId}");
+                    return false;
+                }
+
+                // Створюємо refund
+                var refundService = new RefundService();
                 var refundOptions = new RefundCreateOptions
                 {
                     PaymentIntent = paymentIntentId,
-                    Amount = (long)(amount * 100), // Convert to cents
+                    Amount = (long)(amount * 100), // Stripe працює в центах
                     Reason = reason switch
                     {
+                        "No examiner available" => "requested_by_customer",
                         "duplicate" => "duplicate",
                         "fraudulent" => "fraudulent",
                         _ => "requested_by_customer"
-                    }
+                    },
+                    Metadata = new Dictionary<string, string>
+            {
+                { "refund_reason", reason },
+                { "refund_date", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") }
+            }
                 };
 
-                var refundService = new RefundService();
                 var refund = await refundService.CreateAsync(refundOptions);
 
-                _logger.LogInformation($"Refund processed successfully. Refund ID: {refund.Id}");
-                return refund.Status == "succeeded" || refund.Status == "pending";
+                _logger.LogInformation($"Refund created - ID: {refund.Id}, Status: {refund.Status}, Amount: ${refund.Amount / 100}");
+
+                // Перевіряємо статус
+                if (refund.Status == "succeeded")
+                {
+                    _logger.LogInformation($"✅ Refund succeeded immediately");
+                    return true;
+                }
+                else if (refund.Status == "pending")
+                {
+                    _logger.LogInformation($"⏳ Refund pending, will be processed by Stripe");
+                    return true;
+                }
+                else if (refund.Status == "failed")
+                {
+                    _logger.LogError($"❌ Refund failed: {refund.FailureReason}");
+                    return false;
+                }
+
+                return false;
             }
             catch (StripeException ex)
             {
-                _logger.LogError(ex, $"Stripe refund failed: {ex.Message}");
+                _logger.LogError(ex, $"Stripe API error during refund: {ex.StripeError?.Message}");
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing refund");
+                _logger.LogError(ex, "Unexpected error during refund processing");
                 return false;
             }
         }

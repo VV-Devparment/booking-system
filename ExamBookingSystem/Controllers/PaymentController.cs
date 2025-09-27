@@ -277,17 +277,17 @@ namespace ExamBookingSystem.Controllers
             {
                 _logger.LogInformation($"=== PROCESSING SUCCESSFUL PAYMENT ===");
                 _logger.LogInformation($"Session ID: {session.Id}");
-                _logger.LogInformation($"Student: {bookingData.StudentFirstName} {bookingData.StudentLastName}");
+                _logger.LogInformation($"Payment Intent ID: {session.PaymentIntentId}"); // Важливо!
 
-                // Створюємо бронювання через BookingService
+                // Створюємо бронювання
                 var bookingId = await _bookingService.CreateBookingAsync(bookingData);
                 _logger.LogInformation($"Booking created with ID: {bookingId}");
 
-                // Оновлюємо статус оплати
+                // ВАЖЛИВО: Оновлюємо статус оплати з PaymentIntentId
                 if (_bookingService is EntityFrameworkBookingService efService)
                 {
                     await efService.UpdatePaymentStatusAsync(bookingId, true, session.PaymentIntentId);
-                    _logger.LogInformation("Payment status updated");
+                    _logger.LogInformation($"Payment status updated with PaymentIntentId: {session.PaymentIntentId}");
                 }
 
                 // Геокодуємо адресу
@@ -342,7 +342,7 @@ namespace ExamBookingSystem.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing successful payment");
-                await _slackService.NotifyErrorAsync("Payment processing failed", ex.Message);
+                throw;
             }
         }
 
