@@ -265,7 +265,9 @@
                         <button class="btn btn-sm btn-outline-info" onclick="window.adminFunctions.viewDetails('${booking.bookingId || booking.BookingId}')" title="View Details">
                             <i class="bi bi-eye"></i>
                         </button>
-                        ${(!booking.assignedExaminerName && !booking.AssignedExaminerName && (booking.isPaid || booking.IsPaid)) ?
+                        ${(!booking.assignedExaminerName && !booking.AssignedExaminerName &&
+                (booking.isPaid || booking.IsPaid) &&
+                booking.status !== 'Refunded' && booking.Status !== 'Refunded') ?
                 `<button class="btn btn-sm btn-outline-danger" onclick="window.adminFunctions.processRefund('${booking.bookingId || booking.BookingId}')" title="Process Refund">
                                 <i class="bi bi-cash"></i>
                             </button>` : ''}
