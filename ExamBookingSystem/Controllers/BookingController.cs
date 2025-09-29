@@ -253,6 +253,36 @@ namespace ExamBookingSystem.Controllers
                                 response.BookingId);
 
                             _logger.LogInformation($"📅 Calendar invitation processing completed");
+
+                            // ДОДАЙТЕ календарне запрошення для екзаменатора:
+                            if (_calendarService != null && response.ProposedDateTime.HasValue)
+                            {
+                                var examinerIcsContent = _calendarService.GenerateIcsFile(
+                                    $"Checkride Appointment - {booking.ExamType}",
+                                    response.ProposedDateTime.Value,
+                                    response.ProposedDateTime.Value.AddHours(3),
+                                    response.VenueDetails ?? "Location as agreed",
+                                    $"Checkride examination appointment.\\n" +
+                                    $"Student: {response.StudentName}\\n" +
+                                    $"Email: {response.StudentEmail}\\n" +
+                                    $"Type: {booking.ExamType}\\n" +
+                                    $"Fee: ${response.ExaminerPrice ?? 0}\\n\\n" +
+                                    $"Please ensure all documentation is prepared.\\n" +
+                                    $"Contact student if any changes needed: {response.StudentEmail}"
+                                );
+
+                                await SendExaminerCalendarInvitation(
+                                    response.ExaminerEmail,
+                                    response.ExaminerName,
+                                    response.StudentName,
+                                    response.ProposedDateTime.Value,
+                                    examinerIcsContent,
+                                    response.BookingId,
+                                    response.VenueDetails,
+                                    response.ExaminerPrice);
+
+                                _logger.LogInformation($"📅 Examiner calendar invitation sent");
+                            }
                         }
 
                         // Notify Slack
@@ -440,6 +470,123 @@ namespace ExamBookingSystem.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending calendar invitation email");
+            }
+        }
+
+        private async Task SendExaminerCalendarInvitation(
+    string examinerEmail,
+    string examinerName,
+    string studentName,
+    DateTime scheduledDateTime,
+    string icsContent,
+    string bookingId,
+    string? venueDetails,
+    decimal? examinerPrice)
+        {
+            try
+            {
+                var subject = "📅 Checkride Appointment - Calendar Invitation";
+
+                var body = $@"
+            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
+                <div style='background: linear-gradient(135deg, #5CADD3 0%, #2c3e50 100%); padding: 20px; color: white; border-radius: 10px 10px 0 0; text-align: center;'>
+                    <h2 style='margin: 0;'>Checkride Calendar Invitation</h2>
+                </div>
+                
+                <div style='padding: 20px; background: #f8f9fa; border: 1px solid #dee2e6; border-top: none;'>
+                    <p>Dear <strong>{examinerName}</strong>,</p>
+                    
+                    <p>Your checkride appointment has been confirmed. Please add this event to your calendar.</p>
+                    
+                    <div style='background: white; padding: 20px; border-radius: 8px; margin: 20px 0;'>
+                        <h3 style='color: #28a745; margin-top: 0;'>Appointment Details</h3>
+                        <table style='width: 100%;'>
+                            <tr>
+                                <td style='padding: 8px 0;'><strong>Booking ID:</strong></td>
+                                <td>{bookingId}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 8px 0;'><strong>Student:</strong></td>
+                                <td>{studentName}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 8px 0;'><strong>Date & Time:</strong></td>
+                                <td>{scheduledDateTime:dddd, MMMM dd, yyyy at HH:mm}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 8px 0;'><strong>Duration:</strong></td>
+                                <td>Approximately 3 hours</td>
+                            </tr>
+                            {(!string.IsNullOrEmpty(venueDetails) ? $@"
+                            <tr>
+                                <td style='padding: 8px 0;'><strong>Venue:</strong></td>
+                                <td>{venueDetails}</td>
+                            </tr>" : "")}
+                            {(examinerPrice.HasValue ? $@"
+                            <tr>
+                                <td style='padding: 8px 0;'><strong>Exam Fee:</strong></td>
+                                <td>${examinerPrice:F2}</td>
+                            </tr>" : "")}
+                        </table>
+                    </div>
+                    
+                    <div style='background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                        <p style='margin: 0; color: #0c5460;'>
+                            <strong>📎 Calendar File Attached</strong><br>
+                            Download and open the attached .ics file to add this appointment to your calendar automatically.
+                        </p>
+                    </div>
+                    
+                    <div style='background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                        <h4 style='margin-top: 0; color: #856404;'>Examiner Checklist:</h4>
+                        <ul style='margin: 0; padding-left: 20px; color: #856404;'>
+                            <li>Verify student meets all prerequisites</li>
+                            <li>Prepare necessary examination materials</li>
+                            <li>Review applicable PTS/ACS standards</li>
+                            <li>Confirm weather conditions before the date</li>
+                            <li>Have IACRA credentials ready</li>
+                            <li>Prepare invoice/receipt for payment</li>
+                        </ul>
+                    </div>
+                    
+                    <div style='background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                        <p style='margin: 0; color: #155724;'>
+                            <strong>Payment Information:</strong><br>
+                            The student will pay the exam fee (${examinerPrice ?? 0:F2}) directly to you at the beginning of the checkride.
+                        </p>
+                    </div>
+                    
+                    <p>If you need to make any changes to this appointment, please contact the student directly.</p>
+                    
+                    <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 12px;'>
+                        <p>JUMPSEAT Team<br>
+                        This is an automated calendar invitation for your checkride appointment.</p>
+                    </div>
+                </div>
+            </div>";
+
+                var success = await _emailService.SendEmailWithAttachmentAsync(
+                    examinerEmail,
+                    subject,
+                    body,
+                    icsContent,
+                    $"checkride_examiner_{bookingId}.ics",
+                    "text/calendar",
+                    "JUMPSEAT Team"
+                );
+
+                if (success)
+                {
+                    _logger.LogInformation($"✅ Examiner calendar invitation sent to {examinerEmail}");
+                }
+                else
+                {
+                    _logger.LogWarning($"❌ Failed to send examiner calendar invitation");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending examiner calendar invitation");
             }
         }
 
