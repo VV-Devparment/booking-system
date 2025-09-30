@@ -94,6 +94,14 @@ namespace ExamBookingSystem.Data
                 // Тимчасово відключаємо зв'язок з Examiner
                 entity.Ignore(e => e.Examiner);
             });
+            modelBuilder.Entity<Examiner>(entity =>
+            {
+                entity.ToTable("Examiners");
+                entity.HasKey(e => e.Id);
+                // Інші властивості вже мають Column атрибути в моделі
+            });
+
+            base.OnModelCreating(modelBuilder);
         }
 
         // Helper методи для роботи з екзаменаторами

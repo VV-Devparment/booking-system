@@ -318,7 +318,7 @@
                                         </div>
                                     </div>
 
-                                
+
 
                                     <div class="mb-3">
                                         <label for="examinerPhone" class="form-label">Your Phone (optional)</label>
@@ -529,5 +529,31 @@
             }
         });
     </script>
+    <!-- Examiner Login Modal -->
+    <div class="modal fade" id="examinerLoginModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="bi bi-person-badge"></i> Examiner Login</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="examinerLoginForm">
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="examinerLoginEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" id="examinerLoginPassword" required>
+                            <small class="text-muted">Format: first 3 letters of name + your ID + 'exam'</small>
+                        </div>
+                        <button type="submit" class="btn btn-info w-100">Login</button>
+                    </form>
+                    <div id="examinerLoginError" class="alert alert-danger mt-3 d-none"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

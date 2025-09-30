@@ -30,6 +30,14 @@ catch (Exception ex)
 
 // Базові сервіси
 builder.Services.AddControllers();
+// Додаємо підтримку сесій
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.SuppressInferBindingSourcesForParameters = true;
@@ -166,10 +174,8 @@ app.UseDefaultFiles(); // Має бути ПЕРЕД UseStaticFiles
 app.UseStaticFiles();  // Обслуговування файлів з wwwroot
 
 // Routing
+app.UseSession(); // ВАЖЛИВО: має бути перед UseRouting
 app.UseRouting();
-
-// Session
-app.UseSession();
 
 // Authorization (якщо буде потрібна)
 app.UseAuthorization();

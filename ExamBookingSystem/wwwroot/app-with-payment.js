@@ -1,6 +1,164 @@
 ﻿const API_BASE = '/api';
-const stripe = Stripe('pk_test_51S92nmLDEFw9YnAkt4DiLXEHMZv5TMjEc3JGYp7LvFhOOFx7rHFHXDyW3uNaHxZNpNeU6shjqKRlJCq3Iei6m4iz00oCL0glRB');
+const stripe = Stripe('pk_test_51Ri7PbECQKRSCDpzi5n5B0oclWVCPAbT32F1v3zEIooF0avPQTX2XWsjsTkF2sTPQgWnGIl8Ovd08JEUNxWUcEie00u5qO5lpt');
 
+// ============== EXAMINER AUTHENTICATION VARIABLES ==============
+let currentExaminer = null;
+let examinerPortalContent = null;
+
+// ============== INITIALIZATION ==============
+document.addEventListener('DOMContentLoaded', function () {
+    // Зберігаємо оригінальний контент Examiner Portal
+    const examinerTab = document.getElementById('examinerTab');
+    if (examinerTab) {
+        examinerPortalContent = examinerTab.innerHTML;
+    }
+
+    // Перевіряємо автентифікацію
+    checkExaminerAuth();
+
+    // Обробник переключення на вкладку Examiner
+    const examinerTabLink = document.querySelector('a[href="#examinerTab"]');
+    if (examinerTabLink) {
+        examinerTabLink.addEventListener('click', function (e) {
+            if (!currentExaminer) {
+                e.preventDefault();
+                e.stopPropagation();
+                hideExaminerPortal();
+                // Активуємо вкладку програмно
+                const tab = new bootstrap.Tab(examinerTabLink);
+                tab.show();
+            }
+        });
+    }
+
+    // Initialize date input
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(10, 0, 0, 0);
+    const dateStr = tomorrow.toISOString().slice(0, 16);
+
+    const proposedDateTime = document.getElementById('proposedDateTime');
+    if (proposedDateTime) {
+        proposedDateTime.value = dateStr;
+    }
+
+    // Examiner login form handler
+    const loginForm = document.getElementById('examinerLoginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleExaminerLogin);
+    }
+});
+
+// ============== EXAMINER AUTHENTICATION FUNCTIONS ==============
+async function checkExaminerAuth() {
+    try {
+        const response = await fetch('/api/Examiner/check-auth');
+        if (response.ok) {
+            const result = await response.json();
+            if (result.authenticated) {
+                currentExaminer = result.examiner;
+                console.log('Examiner authenticated:', currentExaminer);
+                showExaminerPortal();
+            } else {
+                // Не викликаємо hideExaminerPortal тут, тільки коли юзер клікає на вкладку
+            }
+        }
+    } catch (error) {
+        console.error('Auth check error:', error);
+    }
+}
+
+function hideExaminerPortal() {
+    const examinerTab = document.getElementById('examinerTab');
+    if (examinerTab) {
+        examinerTab.innerHTML = `
+            <div class="text-center py-5">
+                <div class="card mx-auto" style="max-width: 400px;">
+                    <div class="card-body">
+                        <h3><i class="bi bi-lock"></i> Examiner Access Required</h3>
+                        <p>Please login to access the Examiner Portal</p>
+                        <button class="btn btn-info btn-lg" onclick="showExaminerLogin()">
+                            <i class="bi bi-box-arrow-in-right"></i> Examiner Login
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function showExaminerPortal() {
+    const examinerTab = document.getElementById('examinerTab');
+    if (examinerTab && examinerPortalContent) {
+        examinerTab.innerHTML = examinerPortalContent;
+
+        // Автозаповнення полів
+        if (currentExaminer) {
+            setTimeout(() => {
+                const emailField = document.getElementById('examinerEmail');
+                const nameField = document.getElementById('examinerName');
+                const filterField = document.getElementById('examinerEmailFilter');
+
+                if (emailField) emailField.value = currentExaminer.email;
+                if (nameField) nameField.value = currentExaminer.name;
+                if (filterField) filterField.value = currentExaminer.email;
+            }, 100);
+        }
+    }
+}
+
+function showExaminerLogin() {
+    const modal = new bootstrap.Modal(document.getElementById('examinerLoginModal'));
+    modal.show();
+}
+
+async function handleExaminerLogin(e) {
+    e.preventDefault();
+
+    const email = document.getElementById('examinerLoginEmail').value;
+    const password = document.getElementById('examinerLoginPassword').value;
+    const errorDiv = document.getElementById('examinerLoginError');
+
+    try {
+        const response = await fetch('http://localhost:5082/api/Examiner/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            currentExaminer = result.examiner;
+            console.log('Login successful:', currentExaminer);
+
+            const modal = bootstrap.Modal.getInstance(document.getElementById('examinerLoginModal'));
+            if (modal) modal.hide();
+
+            showExaminerPortal();
+            alert(`Welcome, ${currentExaminer.name}!`);
+        } else {
+            errorDiv.textContent = result.message || 'Login failed';
+            errorDiv.classList.remove('d-none');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        errorDiv.textContent = 'Connection error';
+        errorDiv.classList.remove('d-none');
+    }
+}
+
+async function logoutExaminer() {
+    try {
+        await fetch('/api/Examiner/logout', { method: 'POST' });
+        currentExaminer = null;
+        location.reload();
+    } catch (error) {
+        console.error('Logout error:', error);
+    }
+}
+
+// ============== BOOKING FORM HANDLER ==============
 document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -18,7 +176,6 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     submitText.textContent = 'Processing...';
     loadingSpinner.classList.remove('d-none');
 
-    // Collect form data with new fields
     const asapChecked = document.getElementById('asapCheckbox').checked;
     const startDate = document.getElementById('startDate').value;
     const endDate = document.getElementById('endDate').value;
@@ -28,25 +185,17 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
         studentLastName: document.getElementById('lastName').value,
         studentEmail: document.getElementById('email').value,
         studentPhone: window.phoneIti ? window.phoneIti.getNumber() : document.getElementById('phone').value,
-
-        // Aircraft and exam info
         aircraftType: document.getElementById('aircraftType').value,
         checkRideType: document.getElementById('checkRideType').value,
         preferredAirport: document.getElementById('preferredAirport').value,
         searchRadius: parseInt(document.getElementById('searchRadius').value) || 50,
         willingToFly: document.getElementById('willingToFly').checked,
-
-        // New availability window fields
         dateOption: asapChecked ? "ASAP" : "DATE_RANGE",
         startDate: asapChecked ? new Date().toISOString() : (startDate ? new Date(startDate).toISOString() : new Date().toISOString()),
         endDate: asapChecked ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : (endDate ? new Date(endDate).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()),
-
-        // New additional fields
         ftnNumber: document.getElementById('ftnNumber').value || '',
         examId: document.getElementById('examId').value || '',
         additionalNotes: document.getElementById('additionalNotes').value || '',
-
-        // Legacy compatibility fields
         studentAddress: document.getElementById('preferredAirport').value,
         examType: document.getElementById('checkRideType').value,
         preferredDate: asapChecked ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : (startDate ? new Date(startDate).toISOString() : new Date().toISOString()),
@@ -54,53 +203,21 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
         specialRequirements: document.getElementById('additionalNotes').value || ''
     };
 
-    // Перевірка наявності всіх полів
-    const requiredFields = {
-        firstName: document.getElementById('firstName')?.value,
-        lastName: document.getElementById('lastName')?.value,
-        email: document.getElementById('email')?.value,
-        aircraftType: document.getElementById('aircraftType')?.value,
-        checkRideType: document.getElementById('checkRideType')?.value,
-        preferredAirport: document.getElementById('preferredAirport')?.value
-    };
-
-    console.log('Required fields check:', requiredFields);
-
-    // Якщо якесь поле відсутнє
-    for (const [field, value] of Object.entries(requiredFields)) {
-        if (!value) {
-            console.error(`Missing required field: ${field}`);
-            alert(`Please fill in: ${field}`);
-            submitBtn.disabled = false;
-            submitText.textContent = 'Proceed to Payment ($100)';
-            loadingSpinner.classList.add('d-none');
-            e.target.dataset.submitting = 'false';
-            return;
-        }
-    }
-
-    console.log('Form data being sent:', formData);
-
     try {
         const response = await fetch(`${API_BASE}/Payment/create-checkout-session`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
         });
 
         if (response.ok) {
             const result = await response.json();
-            console.log('Checkout session created:', result);
             window.location.href = result.url;
         } else {
             const error = await response.text();
-            console.error('Checkout session error:', error);
             showError(error);
         }
     } catch (error) {
-        console.error('Network error:', error);
         showError('Network error. Please check your connection.');
     } finally {
         submitBtn.disabled = false;
@@ -110,33 +227,15 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     }
 });
 
+// ============== EXAMINER RESPONSE FORM ==============
 document.getElementById('examinerResponseForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const bookingId = document.getElementById('bookingId').value;
-
-    // ДОДАНА ПЕРЕВІРКА: Блокуємо форму якщо букінг вже взятий
-    if (bookingId) {
-        try {
-            const checkResponse = await fetch(`${API_BASE}/Booking/${bookingId}`);
-            if (checkResponse.ok) {
-                const booking = await checkResponse.json();
-                if (booking.status === 'ExaminerAssigned' ||
-                    booking.status === 'Scheduled' ||
-                    booking.assignedExaminerEmail) {
-                    alert('This booking has already been assigned to another examiner.');
-                    // Заблокувати форму та кнопку
-                    const submitBtn = document.querySelector('#examinerResponseForm button[type="submit"]');
-                    submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<i class="bi bi-lock"></i> Booking Taken';
-                    submitBtn.classList.add('btn-secondary');
-                    submitBtn.classList.remove('btn-info');
-                    return;
-                }
-            }
-        } catch (error) {
-            console.error('Error checking booking status:', error);
-        }
+    // Перевірка автентифікації
+    if (!currentExaminer) {
+        alert('Please login as examiner first');
+        showExaminerLogin();
+        return;
     }
 
     const responseData = {
@@ -156,9 +255,7 @@ document.getElementById('examinerResponseForm').addEventListener('submit', async
     try {
         const response = await fetch(`${API_BASE}/Booking/examiner/respond`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(responseData)
         });
 
@@ -171,103 +268,47 @@ document.getElementById('examinerResponseForm').addEventListener('submit', async
                     <div class="alert alert-success">
                         <h5>✅ Success!</h5>
                         <p>${result.message}</p>
-                    </div>
-                `;
-                // Заблокувати форму після успішної відповіді
-                const submitBtn = document.querySelector('#examinerResponseForm button[type="submit"]');
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Response Sent';
-                submitBtn.classList.add('btn-success');
-                submitBtn.classList.remove('btn-info');
+                    </div>`;
             } else {
                 resultDiv.innerHTML = `
                     <div class="alert alert-warning">
                         <h5>⚠️ Not Assigned</h5>
                         <p>${result.message}</p>
-                    </div>
-                `;
+                    </div>`;
             }
         } else {
             resultDiv.innerHTML = `
                 <div class="alert alert-danger">
                     <h5>❌ Error</h5>
                     <p>${result.message || 'An error occurred'}</p>
-                </div>
-            `;
+                </div>`;
         }
     } catch (error) {
         document.getElementById('examinerResponseResult').innerHTML = `
             <div class="alert alert-danger">
                 <h5>❌ Network Error</h5>
                 <p>Could not connect to server</p>
-            </div>
-        `;
+            </div>`;
     }
 });
 
-function showSuccess(result) {
-    document.getElementById('studentForm').classList.add('d-none');
-    document.getElementById('successMessage').classList.remove('d-none');
-    document.getElementById('bookingIdDisplay').textContent = result.bookingId;
-
-    const examinersList = document.getElementById('examinersList');
-    examinersList.innerHTML = '';
-
-    if (result.examinersContacted && result.examinersContacted.length > 0) {
-        result.examinersContacted.forEach(examiner => {
-            const li = document.createElement('li');
-            li.textContent = examiner;
-            examinersList.appendChild(li);
-        });
-    }
-}
-
-function showError(error) {
-    document.getElementById('studentForm').classList.add('d-none');
-    document.getElementById('errorMessage').classList.remove('d-none');
-    document.getElementById('errorText').textContent = error || 'An unexpected error occurred';
-}
-
-function createNewBooking() {
-    document.getElementById('bookingForm').reset();
-    document.getElementById('studentForm').classList.remove('d-none');
-    document.getElementById('successMessage').classList.add('d-none');
-    document.getElementById('errorMessage').classList.add('d-none');
-
-    // Reset ASAP checkbox to checked
-    document.getElementById('asapCheckbox').checked = true;
-    toggleDateRange();
-}
-
-function retryBooking() {
-    document.getElementById('studentForm').classList.remove('d-none');
-    document.getElementById('errorMessage').classList.add('d-none');
-}
-
-function showExaminerPanel() {
-    const modal = new bootstrap.Modal(document.getElementById('examinerModal'));
-    modal.show();
-}
-
-function showActiveBookings() {
-    const modal = new bootstrap.Modal(document.getElementById('activeBookingsModal'));
-    modal.show();
-    loadActiveBookings();
-}
-
-// ОНОВЛЕНА ФУНКЦІЯ loadActiveBookings - передаємо дані про екзаменатора
+// ============== HELPER FUNCTIONS ==============
 async function loadActiveBookings() {
+    // Перевірка автентифікації
+    if (!currentExaminer) {
+        alert('Please login as examiner first');
+        showExaminerLogin();
+        return;
+    }
+
     const listDiv = document.getElementById('activeBookingsList');
     listDiv.innerHTML = '<div class="spinner-border"></div> Loading...';
 
     try {
-        console.log('Loading active bookings...');
         const response = await fetch(`${API_BASE}/Booking/active`);
-        console.log('Response status:', response.status);
 
         if (response.ok) {
             const bookings = await response.json();
-            console.log('Bookings received:', bookings);
 
             if (bookings.length === 0) {
                 listDiv.innerHTML = '<p class="text-muted">No active bookings at the moment</p>';
@@ -278,24 +319,13 @@ async function loadActiveBookings() {
             html += '<thead><tr><th>Booking ID</th><th>Student</th><th>Email</th><th>Exam Type</th><th>Status</th><th>Paid</th><th>Created</th></tr></thead><tbody>';
 
             bookings.forEach(booking => {
-                // ВИПРАВЛЕНО: Передаємо дані про призначеного екзаменатора
-                const statusBadge = getDetailedStatusBadge(
-                    booking.status,
-                    booking.assignedExaminerEmail,
-                    booking.assignedExaminerName
-                );
-
-                const paidBadge = booking.isPaid
-                    ? '<span class="badge bg-success">Paid</span>'
-                    : '<span class="badge bg-warning">Pending</span>';
+                const statusBadge = getDetailedStatusBadge(booking.status, booking.assignedExaminerEmail, booking.assignedExaminerName);
+                const paidBadge = booking.isPaid ? '<span class="badge bg-success">Paid</span>' : '<span class="badge bg-warning">Pending</span>';
 
                 const bookingJson = JSON.stringify({
                     bookingId: booking.bookingId,
                     studentName: booking.studentName,
-                    studentEmail: booking.studentEmail,
-                    status: booking.status,
-                    assignedExaminerEmail: booking.assignedExaminerEmail,
-                    assignedExaminerName: booking.assignedExaminerName
+                    studentEmail: booking.studentEmail
                 }).replace(/"/g, '&quot;');
 
                 html += `
@@ -307,8 +337,7 @@ async function loadActiveBookings() {
                         <td>${statusBadge}</td>
                         <td>${paidBadge}</td>
                         <td>${new Date(booking.createdAt).toLocaleString()}</td>
-                    </tr>
-                `;
+                    </tr>`;
             });
 
             html += '</tbody></table></div>';
@@ -317,135 +346,26 @@ async function loadActiveBookings() {
             listDiv.innerHTML = '<div class="alert alert-danger">Failed to load bookings</div>';
         }
     } catch (error) {
-        console.error('Error loading bookings:', error);
         listDiv.innerHTML = '<div class="alert alert-danger">Network error</div>';
     }
 }
 
-// ОНОВЛЕНА ФУНКЦІЯ - підтримка як текстових, так і числових статусів + Free/Taken логіка
-function getDetailedStatusBadge(status, assignedExaminerEmail = null, assignedExaminerName = null) {
-    // Мапінг числових значень до текстових
-    const statusMap = {
-        0: 'Created',
-        1: 'PaymentPending',
-        2: 'PaymentConfirmed',
-        3: 'ExaminersContacted',
-        4: 'ExaminerAssigned',
-        5: 'Scheduled',
-        6: 'Completed',
-        7: 'Cancelled',
-        8: 'RefundRequested',
-        9: 'Refunded'
-    };
-
-    const statusText = typeof status === 'number' ? statusMap[status] : status;
-
-    // ВИПРАВЛЕНО: Перевіряємо чи є призначений екзаменатор
-    const hasAssignedExaminer = assignedExaminerEmail || assignedExaminerName;
-
-    // Якщо є призначений екзаменатор - букінг взятий
-    if (hasAssignedExaminer) {
-        return '<span class="badge bg-danger">Taken</span>';
-    }
-
-    // Інакше перевіряємо статус
-    if (statusText === 'Created' || statusText === 'PaymentPending' ||
-        statusText === 'PaymentConfirmed' || statusText === 'ExaminersContacted') {
-        return '<span class="badge bg-success">Free</span>';
-    } else if (statusText === 'ExaminerAssigned' || statusText === 'Scheduled' || statusText === 'Completed') {
-        return '<span class="badge bg-danger">Taken</span>';
-    } else if (statusText === 'Cancelled') {
-        return '<span class="badge bg-secondary">Cancelled</span>';
-    } else if (statusText === 'Refunded' || statusText === 'RefundRequested') {
-        return '<span class="badge bg-secondary">Refunded</span>';
-    } else {
-        return `<span class="badge bg-light text-dark">${statusText || status}</span>`;
-    }
-}
-
-// ОНОВЛЕНА ФУНКЦІЯ fillExaminerForm - враховує призначеного екзаменатора
-function fillExaminerForm(booking) {
-    const statusMap = {
-        0: 'Created',
-        1: 'PaymentPending',
-        2: 'PaymentConfirmed',
-        3: 'ExaminersContacted',
-        4: 'ExaminerAssigned',
-        5: 'Scheduled',
-        6: 'Completed',
-        7: 'Cancelled',
-        8: 'RefundRequested',
-        9: 'Refunded'
-    };
-
-    const statusText = typeof booking.status === 'number' ? statusMap[booking.status] : booking.status;
-
-    // ВИПРАВЛЕНО: Перевіряємо як статус, так і призначеного екзаменатора
-    const hasAssignedExaminer = booking.assignedExaminerEmail || booking.assignedExaminerName;
-    const isTaken = hasAssignedExaminer ||
-        statusText === 'ExaminerAssigned' ||
-        statusText === 'Scheduled' ||
-        statusText === 'Completed';
-
-    if (isTaken) {
-        const examinerInfo = hasAssignedExaminer ?
-            ` (Assigned to: ${booking.assignedExaminerName || booking.assignedExaminerEmail})` : '';
-        alert(`This booking is already taken by another examiner.${examinerInfo}`);
+async function loadFilteredBookings() {
+    // Перевірка автентифікації
+    if (!currentExaminer) {
+        alert('Please login as examiner first');
+        showExaminerLogin();
         return;
     }
 
-    // Решта коду залишається без змін
-    document.getElementById('bookingId').value = booking.bookingId;
-    document.getElementById('studentName').value = booking.studentName;
-    document.getElementById('studentEmail').value = booking.studentEmail;
-
-    const submitBtn = document.querySelector('#examinerResponseForm button[type="submit"]');
-    if (isTaken) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="bi bi-lock"></i> Booking Taken';
-        submitBtn.classList.add('btn-secondary');
-        submitBtn.classList.remove('btn-info');
-    } else {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = 'Submit Response';
-        submitBtn.classList.add('btn-info');
-        submitBtn.classList.remove('btn-secondary', 'btn-success');
-    }
-
-    const formHeader = document.querySelector('.card-header.bg-gradient-info');
-    if (formHeader) {
-        formHeader.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-        });
-    }
-
-    const form = document.querySelector('#examinerResponseForm');
-    if (form && form.parentElement) {
-        form.parentElement.style.boxShadow = '0 0 20px rgba(0,123,255,0.5)';
-        form.parentElement.style.transition = 'box-shadow 0.3s ease';
-        setTimeout(() => {
-            form.parentElement.style.boxShadow = '';
-        }, 1500);
-    }
-}
-
-async function loadFilteredBookings() {
     const email = document.getElementById('examinerEmailFilter').value;
-    const examType = document.getElementById('examTypeFilter').value;
-    const state = document.getElementById('stateFilter').value;
-    const dateFrom = document.getElementById('dateFromFilter').value;
-
     if (!email) {
         alert('Please enter your email address');
         return;
     }
 
     const params = new URLSearchParams();
-    if (email) params.append('examinerEmail', email);
-    if (examType) params.append('examType', examType);
-    if (state) params.append('state', state);
-    if (dateFrom) params.append('dateFrom', dateFrom);
+    params.append('examinerEmail', email);
 
     const listDiv = document.getElementById('availableBookingsList');
     listDiv.innerHTML = '<div class="spinner-border"></div> Loading...';
@@ -461,39 +381,16 @@ async function loadFilteredBookings() {
             }
 
             let html = '<div class="table-responsive"><table class="table table-hover">';
-            html += `<thead>
-                <tr>
-                    <th>Booking ID</th>
-                    <th>Student</th>
-                    <th>Exam Type</th>
-                    <th>Location</th>
-                    <th>Preferred Date</th>
-                    <th>Days Waiting</th>
-                    <th>Action</th>
-                </tr>
-            </thead><tbody>`;
+            html += '<thead><tr><th>Booking ID</th><th>Student</th><th>Exam Type</th><th>Location</th><th>Preferred Date</th><th>Action</th></tr></thead><tbody>';
 
             bookings.forEach(booking => {
-                let dateDisplay = new Date(booking.preferredDate).toLocaleDateString();
-                if (booking.startDate && booking.endDate) {
-                    const start = new Date(booking.startDate).toLocaleDateString();
-                    const end = new Date(booking.endDate).toLocaleDateString();
-                    dateDisplay = `${start} - ${end}`;
-                }
-
-                const willingToTravelBadge = booking.willingToTravel
-                    ? '<span class="badge bg-success">Yes</span>'
-                    : '<span class="badge bg-secondary">No</span>';
-
                 html += `
                     <tr>
                         <td><code>${booking.bookingId}</code></td>
                         <td>${booking.studentName}</td>
                         <td><span class="badge bg-info">${booking.examType}</span></td>
                         <td>${booking.location}</td>
-                        <td>${dateDisplay}</td>
-                        <td>${willingToTravelBadge}</td>
-                        <td><span class="badge ${booking.daysWaiting > 3 ? 'bg-warning' : 'bg-secondary'}">${booking.daysWaiting} days</span></td>
+                        <td>${new Date(booking.preferredDate).toLocaleDateString()}</td>
                         <td>
                             <button class="btn btn-sm btn-success" 
                                 onclick="fillResponseForm('${booking.bookingId}', '${booking.studentName.replace(/'/g, "\\'")}')">
@@ -505,24 +402,60 @@ async function loadFilteredBookings() {
 
             html += '</tbody></table></div>';
             listDiv.innerHTML = html;
-        } else {
-            listDiv.innerHTML = '<div class="alert alert-danger">Failed to load bookings</div>';
         }
     } catch (error) {
         listDiv.innerHTML = '<div class="alert alert-danger">Network error</div>';
     }
 }
 
+function getDetailedStatusBadge(status, assignedExaminerEmail, assignedExaminerName) {
+    const hasAssignedExaminer = assignedExaminerEmail || assignedExaminerName;
+
+    if (hasAssignedExaminer) {
+        return '<span class="badge bg-danger">Taken</span>';
+    }
+
+    return '<span class="badge bg-success">Free</span>';
+}
+
+function fillExaminerForm(booking) {
+    document.getElementById('bookingId').value = booking.bookingId;
+    document.getElementById('studentName').value = booking.studentName;
+    document.getElementById('studentEmail').value = booking.studentEmail;
+}
+
 function fillResponseForm(bookingId, studentName) {
     document.getElementById('bookingId').value = bookingId;
     document.getElementById('studentName').value = studentName;
-    document.getElementById('examinerEmail').focus();
-
-    // Scroll to response form
     document.querySelector('.card-header.bg-gradient-info').scrollIntoView({ behavior: 'smooth' });
 }
 
-// Toggle date range visibility
+function showSuccess(result) {
+    document.getElementById('studentForm').classList.add('d-none');
+    document.getElementById('successMessage').classList.remove('d-none');
+    document.getElementById('bookingIdDisplay').textContent = result.bookingId;
+}
+
+function showError(error) {
+    document.getElementById('studentForm').classList.add('d-none');
+    document.getElementById('errorMessage').classList.remove('d-none');
+    document.getElementById('errorText').textContent = error || 'An unexpected error occurred';
+}
+
+function createNewBooking() {
+    document.getElementById('bookingForm').reset();
+    document.getElementById('studentForm').classList.remove('d-none');
+    document.getElementById('successMessage').classList.add('d-none');
+    document.getElementById('errorMessage').classList.add('d-none');
+    document.getElementById('asapCheckbox').checked = true;
+    toggleDateRange();
+}
+
+function retryBooking() {
+    document.getElementById('studentForm').classList.remove('d-none');
+    document.getElementById('errorMessage').classList.add('d-none');
+}
+
 function toggleDateRange() {
     const asapCheckbox = document.getElementById('asapCheckbox');
     const dateRangeSection = document.getElementById('dateRangeSection');
@@ -537,18 +470,18 @@ function toggleDateRange() {
         tomorrow.setDate(tomorrow.getDate() + 1);
         const nextWeek = new Date();
         nextWeek.setDate(nextWeek.getDate() + 7);
-
         document.getElementById('startDate').value = tomorrow.toISOString().split('T')[0];
         document.getElementById('endDate').value = nextWeek.toISOString().split('T')[0];
     }
 }
 
-// Експортуємо функції в глобальний scope
+// ============== EXPORT FUNCTIONS ==============
+window.showExaminerLogin = showExaminerLogin;
+window.logoutExaminer = logoutExaminer;
 window.loadActiveBookings = loadActiveBookings;
 window.loadFilteredBookings = loadFilteredBookings;
 window.fillResponseForm = fillResponseForm;
 window.fillExaminerForm = fillExaminerForm;
 window.createNewBooking = createNewBooking;
 window.retryBooking = retryBooking;
-window.showExaminerPanel = showExaminerPanel;
 window.toggleDateRange = toggleDateRange;
