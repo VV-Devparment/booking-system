@@ -115,15 +115,18 @@ function showExaminerLogin() {
 async function handleExaminerLogin(e) {
     e.preventDefault();
 
-    const email = document.getElementById('examinerLoginEmail').value;
+    const username = document.getElementById('examinerLoginUsername').value;
     const password = document.getElementById('examinerLoginPassword').value;
     const errorDiv = document.getElementById('examinerLoginError');
 
     try {
-        const response = await fetch('http://localhost:5082/api/Examiner/login', {
+        const response = await fetch('/api/Examiner/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({
+                username: username,  // відправляємо як username
+                password: password
+            })
         });
 
         const result = await response.json();

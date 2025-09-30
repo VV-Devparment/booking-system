@@ -1,9 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ExamBookingSystem.Data;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace ExamBookingSystem.Controllers
 {
@@ -25,48 +22,35 @@ namespace ExamBookingSystem.Controllers
         {
             try
             {
-                _logger.LogInformation($"=== LOGIN ATTEMPT ===");
-                _logger.LogInformation($"Raw input - Email: '{loginDto.Email}', Password: '{loginDto.Password}'");
+                _logger.LogInformation($"Login attempt with login: {loginDto.Username}");
 
-                var email = loginDto.Email?.Trim().ToLower();
+                var login = loginDto.Username?.Trim().ToLower();
                 var password = loginDto.Password?.Trim();
 
-                _logger.LogInformation($"Cleaned - Email: '{email}', Password: '{password}'");
-
-                var examiners = await _context.Examiners.ToListAsync();
-                _logger.LogInformation($"Total examiners loaded: {examiners.Count}");
-
-                // Знайдемо Bruce для тесту
-                var bruce = examiners.FirstOrDefault(e => e.Name.Contains("Bruce"));
-                if (bruce != null)
-                {
-                    _logger.LogInformation($"Bruce found - Email: '{bruce.Email}', Password: '{bruce.Password}'");
-                    _logger.LogInformation($"Comparing: '{bruce.Email.ToLower()}' == '{email}' ? {bruce.Email.ToLower() == email}");
-                    _logger.LogInformation($"Password: '{bruce.Password}' == '{password}' ? {bruce.Password == password}");
-                }
-
-                var examiner = examiners.FirstOrDefault(e => e.Email.ToLower() == email);
+                // Шукаємо по login полю
+                var examiner = await _context.Examiners
+                    .FirstOrDefaultAsync(e => e.Login != null && e.Login.ToLower() == login);
 
                 if (examiner == null)
                 {
-                    _logger.LogWarning($"No examiner found with email: {email}");
-                    _logger.LogInformation($"Available emails: {string.Join(", ", examiners.Take(5).Select(e => e.Email))}");
-                    return Ok(new { success = false, message = "Invalid email or password" });
+                    _logger.LogWarning($"No examiner found with login: {login}");
+                    return Ok(new { success = false, message = "Invalid login or password" });
                 }
 
                 _logger.LogInformation($"Found examiner: {examiner.Name}");
-                _logger.LogInformation($"Password check: DB='{examiner.Password}' Input='{password}' Match={examiner.Password == password}");
 
                 if (examiner.Password != password)
                 {
-                    return Ok(new { success = false, message = "Invalid email or password" });
+                    _logger.LogWarning($"Invalid password for login: {login}");
+                    return Ok(new { success = false, message = "Invalid login or password" });
                 }
 
                 HttpContext.Session.SetString("ExaminerId", examiner.Id.ToString());
-                HttpContext.Session.SetString("ExaminerEmail", examiner.Email);
+                HttpContext.Session.SetString("ExaminerEmail", examiner.Email ?? "");
                 HttpContext.Session.SetString("ExaminerName", examiner.Name);
+                HttpContext.Session.SetString("ExaminerLogin", examiner.Login ?? "");
 
-                _logger.LogInformation($"LOGIN SUCCESS for {examiner.Name}");
+                _logger.LogInformation($"Login successful for: {examiner.Name}");
 
                 return Ok(new
                 {
@@ -75,7 +59,8 @@ namespace ExamBookingSystem.Controllers
                     {
                         id = examiner.Id,
                         name = examiner.Name,
-                        email = examiner.Email
+                        email = examiner.Email ?? "",
+                        login = examiner.Login
                     }
                 });
             }
@@ -99,7 +84,7 @@ namespace ExamBookingSystem.Controllers
             var examinerId = HttpContext.Session.GetString("ExaminerId");
             if (string.IsNullOrEmpty(examinerId))
             {
-                return Unauthorized(new { authenticated = false });
+                return Ok(new { authenticated = false });
             }
 
             return Ok(new
@@ -109,67 +94,17 @@ namespace ExamBookingSystem.Controllers
                 {
                     id = examinerId,
                     email = HttpContext.Session.GetString("ExaminerEmail"),
-                    name = HttpContext.Session.GetString("ExaminerName")
+                    name = HttpContext.Session.GetString("ExaminerName"),
+                    login = HttpContext.Session.GetString("ExaminerLogin")
                 }
             });
         }
-
-
-        [HttpGet("test")]
-        public async Task<ActionResult> Test()
-        {
-            try
-            {
-                var examiners = await _context.Examiners.Take(3).ToListAsync();
-
-                return Ok(new
-                {
-                    count = examiners.Count,
-                    data = examiners.Select(e => new
-                    {
-                        id = e.Id,
-                        name = e.Name,
-                        email = e.Email,
-                        password = e.Password
-                    })
-                });
-            }
-            catch (Exception ex)
-            {
-                return Ok(new { error = ex.Message, stack = ex.StackTrace });
-            }
-        }
-        [HttpGet("test-login")]
-        public async Task<ActionResult> TestLogin()
-        {
-            var targetEmail = "bruce.avian1@gmail.com";
-
-            // Отримаємо всіх екзаменаторів
-            var allExaminers = await _context.Examiners.ToListAsync();
-
-            // Знайдемо Bruce
-            var bruce = allExaminers.FirstOrDefault(e =>
-                e.Name.Contains("Bruce") || e.Email.Contains("bruce"));
-
-            if (bruce == null)
-                return Ok(new { message = "Bruce not found in database" });
-
-            return Ok(new
-            {
-                found = true,
-                name = bruce.Name,
-                dbEmail = bruce.Email,
-                searchEmail = targetEmail,
-                emailsMatch = bruce.Email.ToLower() == targetEmail.ToLower(),
-                dbPassword = bruce.Password,
-                testPassword = "bru5exam",
-                passwordMatch = bruce.Password == "bru5exam"
-            });
-        }
-        public class ExaminerLoginDto
-        {
-            public string Email { get; set; } = string.Empty;
-            public string Password { get; set; } = string.Empty;
-        }
     }
-}   
+
+    // DTO клас
+    public class ExaminerLoginDto
+    {
+        public string Username { get; set; } = string.Empty;  // Username для сумісності з frontend
+        public string Password { get; set; } = string.Empty;
+    }
+}

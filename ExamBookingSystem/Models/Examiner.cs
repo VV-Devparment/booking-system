@@ -52,6 +52,8 @@ namespace ExamBookingSystem.Models
         [Column("Password")]
         public string? Password { get; set; }
 
+        [Column("Login")]
+        public string? Login { get; set; }
         // Calculated properties для сумісності з існуючим кодом
         [NotMapped]
         public string FirstName
