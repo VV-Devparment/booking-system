@@ -1,5 +1,5 @@
 ﻿const API_BASE = '/api';
-const stripe = Stripe('pk_test_51Ri7PbECQKRSCDpzi5n5B0oclWVCPAbT32F1v3zEIooF0avPQTX2XWsjsTkF2sTPQgWnGIl8Ovd08JEUNxWUcEie00u5qO5lpt');
+const stripe = Stripe('pk_test_51S92nmLDEFw9YnAkt4DiLXEHMZv5TMjEc3JGYp7LvFhOOFx7rHFHXDyW3uNaHxZNpNeU6shjqKRlJCq3Iei6m4iz00oCL0glRB');
 
 // ============== EXAMINER AUTHENTICATION VARIABLES ==============
 let currentExaminer = null;
