@@ -125,6 +125,10 @@ builder.Services.AddScoped<IExaminerRotationService, ExaminerRotationService>();
 builder.Services.AddHttpContextAccessor();
 // Додайте після інших сервісів:
 builder.Services.AddScoped<IStripeService, StripeService>();
+<<<<<<< HEAD
+=======
+
+>>>>>>> 975b439 (Fix admin login)
 // CORS для розробки
 builder.Services.AddCors(options =>
 {
@@ -137,6 +141,15 @@ builder.Services.AddCors(options =>
         });
 });
 
+<<<<<<< HEAD
+=======
+builder.Services.AddSingleton<ISettingsService>(sp =>
+{
+    var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+    return new SettingsService(scopeFactory);
+});
+
+>>>>>>> 975b439 (Fix admin login)
 var app = builder.Build();
 
 // Діагностика запитів (опціонально)

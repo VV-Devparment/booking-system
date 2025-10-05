@@ -523,6 +523,7 @@
         });
     </script>
     <!-- Examiner Login Modal -->
+    
     <div class="modal fade" id="examinerLoginModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -535,16 +536,26 @@
                         <div class="mb-3">
                             <label class="form-label">Username</label>
                             <input type="text" class="form-control" id="examinerLoginUsername" required>
-                            <small class="text-muted">Format: firstname.lastname.yourID (e.g., john.green.3)</small>
+                            <small class="text-muted">Format: firstname.lastname (e.g., john.smith)</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password</label>
                             <input type="password" class="form-control" id="examinerLoginPassword" required>
-                            <small class="text-muted">Format: first 3 letters of name + your ID + 'exam' (e.g., joh3exam)</small>
+                            <small class="text-muted">Format: first 3 letters of name + 'jumpseat' (e.g., johjumpseat)</small>
                         </div>
                         <button type="submit" class="btn btn-info w-100">Login</button>
                     </form>
                     <div id="examinerLoginError" class="alert alert-danger mt-3 d-none"></div>
+
+                    <!-- Додамо підказку -->
+                    <div class="alert alert-info mt-3">
+                        <small>
+                            <strong>Example:</strong><br>
+                            Name: Bruce Cummings<br>
+                            Username: bruce.cummings<br>
+                            Password: brujumpseat
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>
