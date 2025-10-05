@@ -141,15 +141,12 @@ builder.Services.AddCors(options =>
         });
 });
 
-<<<<<<< HEAD
-=======
 builder.Services.AddSingleton<ISettingsService>(sp =>
 {
     var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
     return new SettingsService(scopeFactory);
 });
 
->>>>>>> 975b439 (Fix admin login)
 var app = builder.Build();
 
 // Діагностика запитів (опціонально)
