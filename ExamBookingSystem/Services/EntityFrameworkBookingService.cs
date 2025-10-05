@@ -40,6 +40,13 @@ namespace ExamBookingSystem.Services
 
             try
             {
+
+                // ДОДАЙТЕ ЦЕ ЛОГУВАННЯ:
+                _logger.LogInformation($"=== CREATING BOOKING IN DB ===");
+                _logger.LogInformation($"Phone from DTO: '{request.StudentPhone}'");
+                _logger.LogInformation($"Phone is null: {request.StudentPhone == null}");
+                _logger.LogInformation($"Phone is empty: {string.IsNullOrEmpty(request.StudentPhone)}");
+
                 var bookingRequest = new BookingRequest
                 {
                     StudentFirstName = request.StudentFirstName,

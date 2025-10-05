@@ -203,29 +203,39 @@ namespace ExamBookingSystem.Controllers
                         }
 
                         // Send SMS confirmation if available
-                        if (_smsService != null && !string.IsNullOrEmpty(booking.StudentEmail))
+                        if (_smsService != null)
                         {
-                            var studentPhone = await GetStudentPhoneFromBooking(response.BookingId);
-                            if (!string.IsNullOrEmpty(studentPhone))
+                            string? studentPhone = null;
+
+                            // Спочатку намагаємось взяти з response
+                            if (!string.IsNullOrEmpty(response.StudentPhone))
+                            {
+                                studentPhone = response.StudentPhone;
+                                _logger.LogInformation($"Using phone from response: {studentPhone}");
+                            }
+                            else
+                            {
+                                // Якщо немає - беремо з БД
+                                studentPhone = await GetStudentPhoneFromBooking(response.BookingId);
+                                _logger.LogInformation($"Retrieved phone from DB: {studentPhone}");
+                            }
+
+                            if (!string.IsNullOrEmpty(studentPhone) && studentPhone.StartsWith("+"))
                             {
                                 var smsMessage = $"Your checkride is confirmed! " +
-                                              $"Examiner: {response.ExaminerName}, " +
-                                              $"Date: {response.ProposedDateTime?.ToString("MMM dd, yyyy HH:mm") ?? "TBD"}. " +
-                                              $"Check your email for details.";
+                                                $"Examiner: {response.ExaminerName}, " +
+                                                $"Date: {response.ProposedDateTime?.ToString("MMM dd, yyyy HH:mm") ?? "TBD"}. " +
+                                                $"Check your email for details.";
 
                                 var smsResult = await _smsService.SendSmsAsync(studentPhone, smsMessage);
                                 if (smsResult)
                                 {
-                                    _logger.LogInformation($"✅ SMS confirmation sent to student successfully");
-                                }
-                                else
-                                {
-                                    _logger.LogWarning($"❌ Failed to send SMS confirmation to student");
+                                    _logger.LogInformation($"✅ SMS sent to {studentPhone}");
                                 }
                             }
                             else
                             {
-                                _logger.LogWarning("📱 No phone number available for SMS confirmation");
+                                _logger.LogWarning($"❌ Invalid phone: '{studentPhone}'");
                             }
                         }
 
@@ -663,12 +673,55 @@ namespace ExamBookingSystem.Controllers
         }
 
         [HttpGet("active")]
-        public async Task<ActionResult<List<BookingInfo>>> GetActiveBookings()
+        public async Task<ActionResult> GetActiveBookings()
         {
             try
             {
                 var bookings = await _bookingService.GetActiveBookingsAsync();
-                return Ok(bookings);
+
+                var result = new List<object>();
+                foreach (var booking in bookings)
+                {
+                    var bookingData = new
+                    {
+                        booking.BookingId,
+                        booking.StudentName,
+                        booking.StudentEmail,
+                        StudentPhone = "",  // Значення за замовчуванням
+                        booking.ExamType,
+                        booking.Status,
+                        booking.IsPaid,
+                        booking.CreatedAt,
+                        booking.AssignedExaminerEmail,
+                        booking.AssignedExaminerName
+                    };
+
+                    // Спробуємо отримати телефон з БД
+                    if (booking.BookingId.StartsWith("BK") && int.TryParse(booking.BookingId.Substring(2), out int id))
+                    {
+                        var dbBooking = await _context.BookingRequests.FindAsync(id);
+                        if (dbBooking != null)
+                        {
+                            bookingData = new
+                            {
+                                booking.BookingId,
+                                booking.StudentName,
+                                booking.StudentEmail,
+                                StudentPhone = dbBooking.StudentPhone ?? "",
+                                booking.ExamType,
+                                booking.Status,
+                                booking.IsPaid,
+                                booking.CreatedAt,
+                                booking.AssignedExaminerEmail,
+                                booking.AssignedExaminerName
+                            };
+                        }
+                    }
+
+                    result.Add(bookingData);
+                }
+
+                return Ok(result);
             }
             catch (Exception ex)
             {

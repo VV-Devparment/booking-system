@@ -22,6 +22,8 @@ namespace ExamBookingSystem.DTOs
         [Required]
         public string StudentEmail { get; set; } = string.Empty;
 
+        public string? StudentPhone { get; set; }
+
         public DateTime? ProposedDateTime { get; set; }
         public string? ResponseMessage { get; set; }
 
