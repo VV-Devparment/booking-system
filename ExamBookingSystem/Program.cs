@@ -125,10 +125,7 @@ builder.Services.AddScoped<IExaminerRotationService, ExaminerRotationService>();
 builder.Services.AddHttpContextAccessor();
 // Додайте після інших сервісів:
 builder.Services.AddScoped<IStripeService, StripeService>();
-<<<<<<< HEAD
-=======
 
->>>>>>> 975b439 (Fix admin login)
 // CORS для розробки
 builder.Services.AddCors(options =>
 {
