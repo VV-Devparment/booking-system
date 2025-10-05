@@ -47,7 +47,46 @@ document.addEventListener('DOMContentLoaded', function () {
     if (loginForm) {
         loginForm.addEventListener('submit', handleExaminerLogin);
     }
+
+    loadBookingFee();
 });
+
+async function loadBookingFee() {
+    try {
+        const response = await fetch('/api/Admin/settings/booking-fee');
+        if (response.ok) {
+            const data = await response.json();
+            const fee = data.fee || 100;
+
+            // Оновлюємо текст кнопки
+            const submitText = document.getElementById('submitText');
+            if (submitText) {
+                submitText.textContent = `Proceed to Payment ($${fee})`;
+            }
+
+            // Оновлюємо суму в alert-і та на кнопці
+            const feeDisplays = document.querySelectorAll('#bookingFeeDisplay, #buttonFeeDisplay');
+            feeDisplays.forEach(el => {
+                if (el) el.textContent = fee;
+            });
+
+            return fee;
+        }
+    } catch (error) {
+        console.error('Error loading booking fee:', error);
+        // При помилці встановлюємо default значення
+        const submitText = document.getElementById('submitText');
+        if (submitText) {
+            submitText.textContent = 'Proceed to Payment ($100)';
+        }
+
+        const feeDisplays = document.querySelectorAll('#bookingFeeDisplay, #buttonFeeDisplay');
+        feeDisplays.forEach(el => {
+            if (el) el.textContent = '100';
+        });
+    }
+    return 100;
+}
 
 // ============== EXAMINER AUTHENTICATION FUNCTIONS ==============
 async function checkExaminerAuth() {
@@ -102,6 +141,12 @@ function showExaminerPortal() {
                 if (emailField) emailField.value = currentExaminer.email;
                 if (nameField) nameField.value = currentExaminer.name;
                 if (filterField) filterField.value = currentExaminer.email;
+
+                // ДОДАЙТЕ ЦЕ - прикріплюємо обробник форми після відновлення HTML
+                const responseForm = document.getElementById('examinerResponseForm');
+                if (responseForm) {
+                    responseForm.addEventListener('submit', handleExaminerResponse);
+                }
             }, 100);
         }
     }
@@ -160,7 +205,73 @@ async function logoutExaminer() {
         console.error('Logout error:', error);
     }
 }
+async function handleExaminerResponse(e) {
+    e.preventDefault();
+    console.log('=== FORM SUBMITTED ===');
 
+    // Перевірка автентифікації
+    if (!currentExaminer) {
+        alert('Please login as examiner first');
+        showExaminerLogin();
+        return;
+    }
+
+    const responseData = {
+        bookingId: document.getElementById('bookingId').value,
+        examinerEmail: document.getElementById('examinerEmail').value,
+        examinerName: document.getElementById('examinerName').value,
+        response: document.querySelector('input[name="response"]:checked')?.value,
+        studentName: document.getElementById('studentName').value,
+        studentEmail: document.getElementById('studentEmail').value,
+        proposedDateTime: document.getElementById('proposedDateTime').value,
+        responseMessage: document.getElementById('responseMessage').value,
+        venueDetails: document.getElementById('venueDetails').value || '',
+        examinerPrice: document.getElementById('examinerPrice').value || null,
+        examinerPhone: document.getElementById('examinerPhone').value || ''
+    };
+
+    console.log('Response data:', responseData);
+
+    try {
+        const response = await fetch(`${API_BASE}/Booking/examiner/respond`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(responseData)
+        });
+
+        const result = await response.json();
+        const resultDiv = document.getElementById('examinerResponseResult');
+
+        if (response.ok) {
+            if (result.assigned) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <h5>✅ Success!</h5>
+                        <p>${result.message}</p>
+                    </div>`;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <h5>⚠️ Not Assigned</h5>
+                        <p>${result.message}</p>
+                    </div>`;
+            }
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <h5>❌ Error</h5>
+                    <p>${result.message || 'An error occurred'}</p>
+                </div>`;
+        }
+    } catch (error) {
+        console.error('Caught error:', error);
+        document.getElementById('examinerResponseResult').innerHTML = `
+            <div class="alert alert-danger">
+                <h5>❌ Network Error</h5>
+                <p>Could not connect to server</p>
+            </div>`;
+    }
+}
 // ============== BOOKING FORM HANDLER ==============
 document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -205,6 +316,7 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
         preferredTime: '10:00',
         specialRequirements: document.getElementById('additionalNotes').value || ''
     };
+    console.log('Phone being sent:', formData.studentPhone);
 
     try {
         const response = await fetch(`${API_BASE}/Payment/create-checkout-session`, {
@@ -224,7 +336,7 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
         showError('Network error. Please check your connection.');
     } finally {
         submitBtn.disabled = false;
-        submitText.textContent = 'Proceed to Payment ($100)';
+        loadBookingFee();
         loadingSpinner.classList.add('d-none');
         e.target.dataset.submitting = 'false';
     }
@@ -232,6 +344,7 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
 
 // ============== EXAMINER RESPONSE FORM ==============
 document.getElementById('examinerResponseForm').addEventListener('submit', async (e) => {
+    console.log('=== FORM SUBMITTED ===');
     e.preventDefault();
 
     // Перевірка автентифікації
@@ -248,6 +361,7 @@ document.getElementById('examinerResponseForm').addEventListener('submit', async
         response: document.querySelector('input[name="response"]:checked').value,
         studentName: document.getElementById('studentName').value,
         studentEmail: document.getElementById('studentEmail').value,
+        studentPhone: document.getElementById('studentPhone').value || '',
         proposedDateTime: document.getElementById('proposedDateTime').value,
         responseMessage: document.getElementById('responseMessage').value,
         venueDetails: document.getElementById('venueDetails').value || '',
@@ -425,6 +539,7 @@ function fillExaminerForm(booking) {
     document.getElementById('bookingId').value = booking.bookingId;
     document.getElementById('studentName').value = booking.studentName;
     document.getElementById('studentEmail').value = booking.studentEmail;
+    document.getElementById('studentPhone').value = booking.studentPhone || '';
 }
 
 function fillResponseForm(bookingId, studentName) {

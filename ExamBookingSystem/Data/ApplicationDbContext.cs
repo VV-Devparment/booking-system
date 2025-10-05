@@ -14,8 +14,7 @@ namespace ExamBookingSystem.Data
         public DbSet<ExaminerResponse> ExaminerResponses { get; set; }
         public DbSet<ActionLog> ActionLogs { get; set; }
         public DbSet<Administrator> Administrators { get; set; }
-
-
+        public DbSet<SystemSetting> SystemSettings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

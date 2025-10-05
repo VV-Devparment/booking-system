@@ -74,6 +74,27 @@
     </div>
 </div>
 
+<div class="card mb-4">
+    <div class="card-header bg-warning">
+        <h5 class="mb-0">⚙️ System Settings</h5>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <label for="bookingFee" class="form-label">Booking Fee ($)</label>
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="number" class="form-control" id="bookingFee" value="100" min="1" max="1000">
+                    <button class="btn btn-primary" onclick="updateBookingFee()">Update</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div id="feeUpdateResult"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Mobile-First Management Card -->
 <div class="card shadow">
     <div class="card-header bg-white">

@@ -4,6 +4,7 @@ using ExamBookingSystem.Models;
 using ExamBookingSystem.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Stripe.Tax;
 
 namespace ExamBookingSystem.Controllers
 {
@@ -14,11 +15,15 @@ namespace ExamBookingSystem.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<AdminController> _logger;
         private readonly IStripeService _stripeService;
-        public AdminController(ApplicationDbContext context, ILogger<AdminController> logger, IStripeService stripeService)
+        private readonly ISettingsService _settingsService;
+
+        public AdminController(ApplicationDbContext context, ILogger<AdminController> logger, IStripeService stripeService, ISettingsService settingsService)
         {
             _context = context;
             _logger = logger;
             _stripeService = stripeService;
+            _settingsService = settingsService;
+
         }
 
         [HttpPost("login")]
@@ -499,6 +504,33 @@ namespace ExamBookingSystem.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+
+        [HttpGet("settings/booking-fee")]
+        public IActionResult GetBookingFee()
+        {
+            var fee = _settingsService.GetBookingFee();
+            return Ok(new { fee });
+        }
+
+        [HttpPost("settings/booking-fee")]
+        public IActionResult UpdateBookingFee([FromBody] UpdateFeeDto request)
+        {
+            try
+            {
+                _settingsService.SetBookingFee(request.Fee);
+                return Ok(new { message = "Fee updated successfully" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+    }
+
+    // Додайте DTO клас
+    public class UpdateFeeDto
+    {
+        public int Fee { get; set; }
     }
 
     public class AdminLoginDto

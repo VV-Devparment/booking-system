@@ -59,7 +59,8 @@
                             </div>
                             <div class="card-body p-4">
                                 <div class="alert alert-info mb-4">
-                                    <i class="bi bi-info-circle"></i> <strong>Payment Required:</strong> $100 USD will be charged to proceed with booking
+                                    <i class="bi bi-info-circle"></i> <strong>Payment Required:</strong>
+                                    $<span id="bookingFeeDisplay">100</span> USD will be charged to proceed with booking
                                 </div>
 
                                 <form id="bookingForm">
@@ -181,7 +182,7 @@
 
                                     <div class="d-grid">
                                         <button type="submit" class="btn btn-primary btn-lg">
-                                            <span id="submitText">Proceed to Payment ($100)</span>
+                                            <span id="submitText">Proceed to Payment ($<span id="buttonFeeDisplay">100</span>)</span>
                                             <span id="loadingSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
                                         </button>
                                     </div>
@@ -274,7 +275,6 @@
                                         <label for="bookingId" class="form-label">Booking ID</label>
                                         <input type="text" class="form-control" id="bookingId" required>
                                     </div>
-
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
                                             <label for="examinerEmail" class="form-label">Your Email</label>
@@ -285,7 +285,6 @@
                                             <input type="text" class="form-control" id="examinerName" required>
                                         </div>
                                     </div>
-
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
                                             <label for="studentName" class="form-label">Student Name</label>
@@ -296,17 +295,17 @@
                                             <input type="email" class="form-control" id="studentEmail" required>
                                         </div>
                                     </div>
+                                    <!-- ДОДАНО: Приховане поле для телефону студента -->
+                                    <input type="hidden" id="studentPhone" value="">
 
                                     <div class="mb-3">
                                         <label for="proposedDateTime" class="form-label">Proposed Date & Time</label>
                                         <input type="datetime-local" class="form-control" id="proposedDateTime" required>
                                     </div>
-
                                     <div class="mb-3">
                                         <label for="responseMessage" class="form-label">Message</label>
                                         <textarea class="form-control" id="responseMessage" rows="2"></textarea>
                                     </div>
-
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
                                             <label for="venueDetails" class="form-label">Venue Details</label>
@@ -317,26 +316,20 @@
                                             <input type="number" class="form-control" id="examinerPrice" placeholder="e.g., 800" min="0" step="50">
                                         </div>
                                     </div>
-
-
-
                                     <div class="mb-3">
                                         <label for="examinerPhone" class="form-label">Your Phone (optional)</label>
                                         <input type="tel" class="form-control" id="examinerPhone"
                                                placeholder="+1 (555) 123-4567">
                                     </div>
-
                                     <div class="mb-3">
                                         <label class="form-label">Your Response</label>
                                         <div class="btn-group w-100" role="group">
                                             <input type="radio" class="btn-check" name="response" id="acceptResponse" value="Accepted" required>
                                             <label class="btn btn-outline-success" for="acceptResponse">✅ Accept</label>
-
                                             <input type="radio" class="btn-check" name="response" id="declineResponse" value="Declined" required>
                                             <label class="btn btn-outline-danger" for="declineResponse">❌ Decline</label>
                                         </div>
                                     </div>
-
                                     <button type="submit" class="btn btn-info w-100">Submit Response</button>
                                 </form>
 

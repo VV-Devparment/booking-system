@@ -19,6 +19,7 @@ namespace ExamBookingSystem.Controllers
         private readonly ISlackService _slackService;
         private readonly ILocationService _locationService;
         private readonly IBookingService _bookingService;
+        private readonly ExamBookingSystem.Services.ISettingsService _settingsService;
 
         // Тимчасове сховище для збереження даних booking між створенням session і webhook
         private static readonly ConcurrentDictionary<string, CreateBookingDto> _pendingBookings = new();
@@ -30,7 +31,8 @@ namespace ExamBookingSystem.Controllers
             IEmailService emailService,
             ISlackService slackService,
             ILocationService locationService,
-            IBookingService bookingService)
+            IBookingService bookingService,
+            ISettingsService settingsService)
         {
             _configuration = configuration;
             _logger = logger;
@@ -39,6 +41,7 @@ namespace ExamBookingSystem.Controllers
             _slackService = slackService;
             _locationService = locationService;
             _bookingService = bookingService;
+            _settingsService = settingsService;
             StripeConfiguration.ApiKey = _configuration["Stripe:SecretKey"];
         }
 
@@ -82,12 +85,14 @@ namespace ExamBookingSystem.Controllers
                 {"studentFirstName", TruncateString(bookingData.StudentFirstName, 100)},
                 {"studentLastName", TruncateString(bookingData.StudentLastName, 100)},
                 {"studentEmail", TruncateString(bookingData.StudentEmail, 200)},
+                {"studentPhone", TruncateString(bookingData.StudentPhone, 50)},
                 {"checkRideType", TruncateString(bookingData.CheckRideType, 50)},
                 {"preferredAirport", TruncateString(bookingData.PreferredAirport, 100)}
             };
 
                 _logger.LogInformation($"Created temp booking ID: {tempBookingId}");
                 _logger.LogInformation($"Metadata items: {string.Join(", ", metadata.Keys)}");
+                _logger.LogInformation($"Phone in metadata: '{bookingData.StudentPhone}'");
 
                 var options = new SessionCreateOptions
                 {
@@ -104,7 +109,7 @@ namespace ExamBookingSystem.Controllers
                                 Name = "Aviation Checkride Booking",
                                 Description = $"{bookingData.CheckRideType} checkride for {bookingData.StudentFirstName} {bookingData.StudentLastName}"
                             },
-                            UnitAmount = 10000, // $100.00
+                            UnitAmount = _settingsService.GetBookingFee() * 100,
                         },
                         Quantity = 1,
                     }
@@ -135,6 +140,7 @@ namespace ExamBookingSystem.Controllers
         public async Task<IActionResult> Webhook()
         {
             _logger.LogInformation("=== STRIPE WEBHOOK RECEIVED ===");
+            _logger.LogInformation($"Headers: {string.Join(", ", Request.Headers.Keys)}");
 
             string json;
             using (var reader = new StreamReader(HttpContext.Request.Body))
@@ -213,6 +219,7 @@ namespace ExamBookingSystem.Controllers
                             if (_pendingBookings.TryRemove(tempBookingId, out bookingData))
                             {
                                 _logger.LogInformation($"✅ Retrieved booking data from memory for {tempBookingId}");
+                                _logger.LogInformation($"Phone from booking data: '{bookingData.StudentPhone}'");
                             }
                         }
 
@@ -226,7 +233,7 @@ namespace ExamBookingSystem.Controllers
                                 StudentFirstName = fullSession.Metadata.GetValueOrDefault("studentFirstName", ""),
                                 StudentLastName = fullSession.Metadata.GetValueOrDefault("studentLastName", ""),
                                 StudentEmail = fullSession.CustomerEmail ?? fullSession.Metadata.GetValueOrDefault("studentEmail", ""),
-                                StudentPhone = fullSession.CustomerDetails?.Phone ?? "Not provided",
+                                StudentPhone = fullSession.Metadata.GetValueOrDefault("studentPhone", ""),
                                 CheckRideType = fullSession.Metadata.GetValueOrDefault("checkRideType", "Private"),
                                 PreferredAirport = fullSession.Metadata.GetValueOrDefault("preferredAirport", ""),
                                 AircraftType = "Cessna 172", // Default
@@ -237,6 +244,9 @@ namespace ExamBookingSystem.Controllers
                                 AdditionalRating = false,
                                 IsRecheck = false
                             };
+
+                            // Логування для перевірки
+                            _logger.LogInformation($"Phone from metadata: '{bookingData.StudentPhone}'");
                         }
 
                         if (bookingData != null)
@@ -277,7 +287,9 @@ namespace ExamBookingSystem.Controllers
             {
                 _logger.LogInformation($"=== PROCESSING SUCCESSFUL PAYMENT ===");
                 _logger.LogInformation($"Session ID: {session.Id}");
-                _logger.LogInformation($"Payment Intent ID: {session.PaymentIntentId}"); // Важливо!
+                _logger.LogInformation($"Payment Intent ID: {session.PaymentIntentId}");
+                _logger.LogInformation($">>> Phone before creating booking: '{bookingData.StudentPhone}'");
+                _logger.LogInformation($">>> Is phone null or empty: {string.IsNullOrEmpty(bookingData.StudentPhone)}");
 
                 // Створюємо бронювання
                 var bookingId = await _bookingService.CreateBookingAsync(bookingData);
@@ -357,7 +369,7 @@ namespace ExamBookingSystem.Controllers
                     StudentFirstName = "Unknown",
                     StudentLastName = "Student",
                     StudentEmail = session.CustomerEmail ?? "unknown@example.com",
-                    StudentPhone = session.CustomerDetails?.Phone ?? "Not provided",
+                    StudentPhone = session.CustomerDetails?.Phone ?? "",
                     CheckRideType = "Private",
                     PreferredAirport = "Unknown",
                     AircraftType = "Unknown",

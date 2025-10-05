@@ -83,6 +83,27 @@
                 </div>
             </div>
 
+            <div class="card mb-4">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">⚙️ System Settings</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <label for="bookingFee" class="form-label">Booking Fee ($)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="bookingFee" value="100" min="1" max="1000">
+                                <button class="btn btn-primary" onclick="window.adminFunctions.updateBookingFee()">Update</button>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mt-4">
+                            <div id="feeUpdateResult"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="card shadow">
                 <div class="card-header bg-white">
                     <div class="row align-items-center">
@@ -156,6 +177,7 @@
         // Завантажуємо дані
         try {
             await Promise.all([loadBookings(), loadStatistics()]);
+            window.adminFunctions.loadCurrentFee();
             console.log('Admin dashboard loaded successfully');
         } catch (error) {
             console.error('Error loading admin dashboard:', error);
@@ -596,6 +618,49 @@
             } catch (error) {
                 console.error('Error processing refund:', error);
                 alert(`Error: ${error.message}`);
+            }
+        },
+
+        loadCurrentFee: async function () {
+            try {
+                const response = await fetch('/api/Admin/settings/booking-fee');
+                if (response.ok) {
+                    const data = await response.json();
+                    const feeInput = document.getElementById('bookingFee');
+                    if (feeInput) {
+                        feeInput.value = data.fee;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading fee:', error);
+            }
+        },
+
+        updateBookingFee: async function () {
+            const fee = document.getElementById('bookingFee').value;
+            const resultDiv = document.getElementById('feeUpdateResult');
+
+            try {
+                const response = await fetch('/api/Admin/settings/booking-fee', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fee: parseInt(fee) })
+                });
+
+                if (response.ok) {
+                    resultDiv.innerHTML = '<div class="alert alert-success">Fee updated successfully!</div>';
+
+                    // ДОДАЙТЕ ЦЕ: Оновлюємо суму на студентській формі якщо вона відкрита
+                    if (typeof window.loadBookingFee === 'function') {
+                        await window.loadBookingFee();
+                    }
+
+                    setTimeout(() => resultDiv.innerHTML = '', 3000);
+                } else {
+                    resultDiv.innerHTML = '<div class="alert alert-danger">Failed to update fee</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="alert alert-danger">Error updating fee</div>';
             }
         }
     };
