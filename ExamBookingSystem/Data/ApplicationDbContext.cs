@@ -31,8 +31,8 @@ namespace ExamBookingSystem.Data
                 entity.Ignore(e => e.LastName);
                 entity.Ignore(e => e.PhoneNumber);
                 entity.Ignore(e => e.Specializations);
-                entity.Ignore(e => e.Latitude);
-                entity.Ignore(e => e.Longitude);
+                // entity.Ignore(e => e.Latitude);
+                // entity.Ignore(e => e.Longitude);
                 entity.Ignore(e => e.DistanceKm);
                 entity.Ignore(e => e.Responses);
 

@@ -1020,112 +1020,83 @@ namespace ExamBookingSystem.Controllers
         }
 
 
-        [HttpGet("geocode-all-examiners")]
-		public async Task<ActionResult> GeocodeAllExaminers()
-		{
-			try
-			{
-				_logger.LogInformation("=== STARTING GEOCODING ALL EXAMINERS ===");
+        [HttpGet("geocode-all-examiners-parallel")]
+        public async Task<ActionResult> GeocodeAllExaminersParallel()
+        {
+            try
+            {
+                _logger.LogInformation("=== STARTING PARALLEL GEOCODING ALL EXAMINERS ===");
 
-				// Завантажуємо всіх екзаменаторів, які мають адресу
-				var allExaminers = await _context.Examiners
-					.Where(e => !string.IsNullOrEmpty(e.Address))
-					.ToListAsync();
+                var allExaminers = await _context.Examiners
+                    .Where(e => !string.IsNullOrEmpty(e.Address))
+                    .ToListAsync();
 
-				_logger.LogInformation($"Loaded {allExaminers.Count} examiners from database");
+                var examinersToGeocode = allExaminers
+                    .Where(e => e.Latitude == null || e.Longitude == null)
+                    .ToList();
 
-				// Фільтруємо тих, хто ще не має координат
-				var examinersToGeocode = allExaminers
-					.Where(e => e.Latitude == null || e.Longitude == null)
-					.ToList();
+                if (!examinersToGeocode.Any())
+                    return Ok(new { message = "All examiners already have coordinates", total = allExaminers.Count });
 
-				_logger.LogInformation($"Found {examinersToGeocode.Count} examiners without coordinates");
+                _logger.LogInformation($"Found {examinersToGeocode.Count} examiners without coordinates");
 
-				if (!examinersToGeocode.Any())
-				{
-					return Ok(new { 
-						message = "All examiners already have coordinates", 
-						total = allExaminers.Count 
-					});
-				}
+                int successful = 0;
+                int failed = 0;
+                int maxParallel = 10; // кількість одночасних запитів до API
+                var semaphore = new SemaphoreSlim(maxParallel);
 
-				int processed = 0;
-				int successful = 0;
-				int failed = 0;
+                var tasks = examinersToGeocode.Select(async examiner =>
+                {
+                    await semaphore.WaitAsync();
+                    try
+                    {
+                        var coords = await _locationService.GeocodeAddressAsync(examiner.Address);
 
-				// Список для пакетного збереження
-				var batchSize = 50;
-				var updatedExaminers = new List<Examiner>();
+                        if (coords.HasValue)
+                        {
+                            examiner.Latitude = coords.Value.Latitude;
+                            examiner.Longitude = coords.Value.Longitude;
+                            Interlocked.Increment(ref successful);
+                        }
+                        else
+                        {
+                            _logger.LogWarning($"❌ Failed to geocode: {examiner.Name} - {examiner.Address}");
+                            Interlocked.Increment(ref failed);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"Error geocoding examiner {examiner.Name}");
+                        Interlocked.Increment(ref failed);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                }).ToList();
 
-				foreach (var examiner in examinersToGeocode)
-				{
-					try
-					{
-						_logger.LogInformation($"[{processed + 1}/{examinersToGeocode.Count}] Geocoding: {examiner.Name} - {examiner.Address}");
+                await Task.WhenAll(tasks);
 
-						var coords = await _locationService.GeocodeAddressAsync(examiner.Address);
+                // Зберігаємо всі зміни в базу одним SaveChangesAsync
+                var saved = await _context.SaveChangesAsync();
+                _logger.LogInformation($"Saved {saved} examiners to DB");
 
-						if (coords.HasValue)
-						{
-							examiner.Latitude = coords.Value.Latitude;
-							examiner.Longitude = coords.Value.Longitude;
+                _logger.LogInformation("=== PARALLEL GEOCODING COMPLETED ===");
+                _logger.LogInformation($"Successful: {successful}, Failed: {failed}");
 
-							updatedExaminers.Add(examiner);
-							successful++;
-						}
-						else
-						{
-							_logger.LogWarning($"❌ Failed to geocode: {examiner.Name} - {examiner.Address}");
-							failed++;
-						}
-
-						processed++;
-
-						// Batch Save
-						if (updatedExaminers.Count >= batchSize)
-						{
-							_context.UpdateRange(updatedExaminers);
-							await _context.SaveChangesAsync();
-							updatedExaminers.Clear();
-						}
-
-						// Rate limiting: 2 запити на секунду
-						await Task.Delay(500);
-					}
-					catch (Exception ex)
-					{
-						_logger.LogError(ex, $"Error geocoding examiner {examiner.Name}");
-						failed++;
-						processed++;
-					}
-				}
-
-				// Зберігаємо залишок, якщо є
-				if (updatedExaminers.Any())
-				{
-					_context.UpdateRange(updatedExaminers);
-					await _context.SaveChangesAsync();
-				}
-
-				_logger.LogInformation("=== GEOCODING COMPLETED ===");
-				_logger.LogInformation($"Total processed: {processed}");
-				_logger.LogInformation($"Successful: {successful}");
-				_logger.LogInformation($"Failed: {failed}");
-
-				return Ok(new
-				{
-					message = "Geocoding completed",
-					totalExaminers = allExaminers.Count,
-					processed,
-					successful,
-					failed
-				});
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Fatal error during geocoding");
-				return StatusCode(500, new { error = ex.Message });
-			}
-		}
+                return Ok(new
+                {
+                    message = "Geocoding completed (parallel)",
+                    totalExaminers = allExaminers.Count,
+                    successful,
+                    failed
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Fatal error during parallel geocoding");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
     }
 }
