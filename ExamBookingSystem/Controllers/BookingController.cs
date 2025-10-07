@@ -1018,5 +1018,37 @@ namespace ExamBookingSystem.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+
+
+        [HttpPost("geocode-all-examiners")]
+        public async Task<ActionResult> GeocodeAllExaminers()
+        {
+            var examiners = await _context.Examiners
+                .Where(e => e.Latitude == null)
+                .Where(e => !string.IsNullOrEmpty(e.Address))
+                .ToListAsync();
+
+            int processed = 0;
+            foreach (var examiner in examiners)
+            {
+                var coords = await _locationService.GeocodeAddressAsync(examiner.Address);
+                if (coords.HasValue)
+                {
+                    examiner.Latitude = coords.Value.Latitude;
+                    examiner.Longitude = coords.Value.Longitude;
+                    processed++;
+                }
+                await Task.Delay(500); // Rate limit: 2 запити/сек
+
+                if (processed % 50 == 0)
+                {
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation($"Geocoded {processed} examiners");
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok($"Geocoded {processed} examiners");
+        }
     }
 }
