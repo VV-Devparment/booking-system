@@ -38,6 +38,7 @@ namespace ExamBookingSystem.Services
 			{
 				_logger.LogInformation($"Searching for examiners within {radiusKm}km of ({latitude}, {longitude})");
 
+				// Отримуємо всіх активних екзаменаторів з БД
 				var examiners = await _context.GetActiveExaminersAsync();
 
 				if (!examiners.Any())
@@ -51,39 +52,39 @@ namespace ExamBookingSystem.Services
 				var nearbyExaminers = new List<ExaminerLocation>();
 				var geocodeTasks = new List<Task<(Models.Examiner examiner, (double, double)? coords)>>();
 
+				// Для кожного екзаменатора: якщо координати вже є в БД, беремо їх, інакше геокодуємо
 				foreach (var examiner in examiners)
 				{
+					(double, double)? coords = null;
 					if (examiner.Latitude.HasValue && examiner.Longitude.HasValue)
+						coords = (examiner.Latitude.Value, examiner.Longitude.Value);
+
+					if (coords.HasValue)
 					{
-						// Використовуємо координати з БД
-						geocodeTasks.Add(Task.FromResult((examiner, (examiner.Latitude.Value, examiner.Longitude.Value))));
+						// Використовуємо наявні координати з БД
+						geocodeTasks.Add(Task.FromResult((examiner, coords)));
 					}
 					else
 					{
-						// Геокодуємо лише якщо координат немає
+						// Геокодуємо адресу
 						geocodeTasks.Add(GeocodeExaminerAsync(examiner));
 					}
 				}
 
 				var geocodeResults = await Task.WhenAll(geocodeTasks);
 
+				// Фільтруємо по відстані та спеціалізації
 				foreach (var (examiner, coords) in geocodeResults)
 				{
 					if (!coords.HasValue)
 					{
-						_logger.LogDebug($"Skipping {examiner.GetDisplayName()} - no coordinates");
+						_logger.LogDebug($"Skipping {examiner.Name} - no coordinates");
 						continue;
 					}
 
-					// Якщо координати ще не були в БД, зберігаємо їх
-					if (!examiner.Latitude.HasValue || !examiner.Longitude.HasValue)
-					{
-						examiner.Latitude = coords.Value.Item1;
-						examiner.Longitude = coords.Value.Item2;
-						_context.Examiners.Update(examiner);
-					}
-
-					var distance = CalculateDistance(latitude, longitude, coords.Value.Item1, coords.Value.Item2);
+					var distance = CalculateDistance(
+						latitude, longitude,
+						coords.Value.Item1, coords.Value.Item2);
 
 					if (distance <= radiusKm)
 					{
@@ -98,6 +99,7 @@ namespace ExamBookingSystem.Services
 							Specializations = examiner.Specializations
 						};
 
+						// Фільтруємо по типу екзамену якщо вказано
 						if (string.IsNullOrEmpty(examType) || examiner.HasSpecialization(examType))
 						{
 							nearbyExaminers.Add(examinerLocation);
@@ -105,10 +107,11 @@ namespace ExamBookingSystem.Services
 					}
 				}
 
-				// Зберігаємо нові координати у БД одноразово
-				await _context.SaveChangesAsync();
-
-				var result = nearbyExaminers.OrderBy(e => e.DistanceKm).Take(3).ToList();
+				// Сортуємо по відстані та повертаємо топ 3
+				var result = nearbyExaminers
+					.OrderBy(e => e.DistanceKm)
+					.Take(3)
+					.ToList();
 
 				_logger.LogInformation($"Found {result.Count} nearby examiners within {radiusKm}km");
 
