@@ -1027,15 +1027,14 @@ namespace ExamBookingSystem.Controllers
 			{
 				_logger.LogInformation("=== STARTING GEOCODING ALL EXAMINERS ===");
 
-				// Завантажуємо всіх екзаменаторів в пам'ять (AsNoTracking для швидкості)
+				// Завантажуємо всіх екзаменаторів, які мають адресу
 				var allExaminers = await _context.Examiners
-					.AsNoTracking()
 					.Where(e => !string.IsNullOrEmpty(e.Address))
 					.ToListAsync();
 
 				_logger.LogInformation($"Loaded {allExaminers.Count} examiners from database");
 
-				// Фільтруємо в пам'яті тих, хто ще не має координат
+				// Фільтруємо тих, хто ще не має координат
 				var examinersToGeocode = allExaminers
 					.Where(e => e.Latitude == null || e.Longitude == null)
 					.ToList();
@@ -1054,6 +1053,10 @@ namespace ExamBookingSystem.Controllers
 				int successful = 0;
 				int failed = 0;
 
+				// Список для пакетного збереження
+				var batchSize = 50;
+				var updatedExaminers = new List<Examiner>();
+
 				foreach (var examiner in examinersToGeocode)
 				{
 					try
@@ -1061,18 +1064,14 @@ namespace ExamBookingSystem.Controllers
 						_logger.LogInformation($"[{processed + 1}/{examinersToGeocode.Count}] Geocoding: {examiner.Name} - {examiner.Address}");
 
 						var coords = await _locationService.GeocodeAddressAsync(examiner.Address);
-						
+
 						if (coords.HasValue)
 						{
-							// Оновлюємо екзаменатора в БД
-							var dbExaminer = await _context.Examiners.FindAsync(examiner.Id);
-							if (dbExaminer != null)
-							{
-								// Оновлюємо через рефлексію або додаємо поля в БД
-								// Поки що просто логуємо
-								_logger.LogInformation($"✅ Geocoded: {examiner.Name} -> ({coords.Value.Latitude}, {coords.Value.Longitude})");
-								successful++;
-							}
+							examiner.Latitude = coords.Value.Latitude;
+							examiner.Longitude = coords.Value.Longitude;
+
+							updatedExaminers.Add(examiner);
+							successful++;
 						}
 						else
 						{
@@ -1082,14 +1081,16 @@ namespace ExamBookingSystem.Controllers
 
 						processed++;
 
+						// Batch Save
+						if (updatedExaminers.Count >= batchSize)
+						{
+							_context.UpdateRange(updatedExaminers);
+							await _context.SaveChangesAsync();
+							updatedExaminers.Clear();
+						}
+
 						// Rate limiting: 2 запити на секунду
 						await Task.Delay(500);
-
-						// Зберігаємо кожні 50 записів
-						if (processed % 50 == 0)
-						{
-							_logger.LogInformation($"Progress: {processed}/{examinersToGeocode.Count} ({successful} successful, {failed} failed)");
-						}
 					}
 					catch (Exception ex)
 					{
@@ -1097,6 +1098,13 @@ namespace ExamBookingSystem.Controllers
 						failed++;
 						processed++;
 					}
+				}
+
+				// Зберігаємо залишок, якщо є
+				if (updatedExaminers.Any())
+				{
+					_context.UpdateRange(updatedExaminers);
+					await _context.SaveChangesAsync();
 				}
 
 				_logger.LogInformation("=== GEOCODING COMPLETED ===");
@@ -1108,9 +1116,9 @@ namespace ExamBookingSystem.Controllers
 				{
 					message = "Geocoding completed",
 					totalExaminers = allExaminers.Count,
-					processed = processed,
-					successful = successful,
-					failed = failed
+					processed,
+					successful,
+					failed
 				});
 			}
 			catch (Exception ex)
