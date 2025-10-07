@@ -29,92 +29,102 @@ namespace ExamBookingSystem.Services
         }
 
         public async Task<List<ExaminerLocation>> FindNearbyExaminersAsync(
-            double latitude,
-            double longitude,
-            double radiusKm = 50,
-            string? examType = null)
-        {
-            try
-            {
-                _logger.LogInformation($"Searching for examiners within {radiusKm}km of ({latitude}, {longitude})");
+			double latitude,
+			double longitude,
+			double radiusKm = 50,
+			string? examType = null)
+		{
+			try
+			{
+				_logger.LogInformation($"Searching for examiners within {radiusKm}km of ({latitude}, {longitude})");
 
-                // Отримуємо всіх активних екзаменаторів з БД
-                var examiners = await _context.GetActiveExaminersAsync();
+				var examiners = await _context.GetActiveExaminersAsync();
 
-                if (!examiners.Any())
-                {
-                    _logger.LogWarning("No examiners found in database");
-                    return new List<ExaminerLocation>();
-                }
+				if (!examiners.Any())
+				{
+					_logger.LogWarning("No examiners found in database");
+					return new List<ExaminerLocation>();
+				}
 
-                _logger.LogInformation($"Processing {examiners.Count} examiners from database");
+				_logger.LogInformation($"Processing {examiners.Count} examiners from database");
 
-                var nearbyExaminers = new List<ExaminerLocation>();
-                var geocodeTasks = new List<Task<(Models.Examiner examiner, (double, double)? coords)>>();
+				var nearbyExaminers = new List<ExaminerLocation>();
+				var geocodeTasks = new List<Task<(Models.Examiner examiner, (double, double)? coords)>>();
 
-                // Запускаємо геокодування паралельно для всіх екзаменаторів
-                foreach (var examiner in examiners)
-                {
-                    geocodeTasks.Add(GeocodeExaminerAsync(examiner));
-                }
+				foreach (var examiner in examiners)
+				{
+					if (examiner.Latitude.HasValue && examiner.Longitude.HasValue)
+					{
+						// Використовуємо координати з БД
+						geocodeTasks.Add(Task.FromResult((examiner, (examiner.Latitude.Value, examiner.Longitude.Value))));
+					}
+					else
+					{
+						// Геокодуємо лише якщо координат немає
+						geocodeTasks.Add(GeocodeExaminerAsync(examiner));
+					}
+				}
 
-                var geocodeResults = await Task.WhenAll(geocodeTasks);
+				var geocodeResults = await Task.WhenAll(geocodeTasks);
 
-                // Фільтруємо по відстані та спеціалізації
-                foreach (var (examiner, coords) in geocodeResults)
-                {
-                    if (!coords.HasValue)
-                    {
-                        _logger.LogDebug($"Skipping {examiner.Name} - no coordinates");
-                        continue;
-                    }
+				foreach (var (examiner, coords) in geocodeResults)
+				{
+					if (!coords.HasValue)
+					{
+						_logger.LogDebug($"Skipping {examiner.GetDisplayName()} - no coordinates");
+						continue;
+					}
 
-                    var distance = CalculateDistance(
-                        latitude, longitude,
-                        coords.Value.Item1, coords.Value.Item2);
+					// Якщо координати ще не були в БД, зберігаємо їх
+					if (!examiner.Latitude.HasValue || !examiner.Longitude.HasValue)
+					{
+						examiner.Latitude = coords.Value.Item1;
+						examiner.Longitude = coords.Value.Item2;
+						_context.Examiners.Update(examiner);
+					}
 
-                    if (distance <= radiusKm)
-                    {
-                        var examinerLocation = new ExaminerLocation
-                        {
-                            ExaminerId = examiner.Id,
-                            Name = examiner.GetDisplayName(),
-                            Email = examiner.Email,
-                            Latitude = coords.Value.Item1,
-                            Longitude = coords.Value.Item2,
-                            DistanceKm = distance,
-                            Specializations = examiner.Specializations
-                        };
+					var distance = CalculateDistance(latitude, longitude, coords.Value.Item1, coords.Value.Item2);
 
-                        // Фільтруємо по типу екзамену якщо вказано
-                        if (string.IsNullOrEmpty(examType) || examiner.HasSpecialization(examType))
-                        {
-                            nearbyExaminers.Add(examinerLocation);
-                        }
-                    }
-                }
+					if (distance <= radiusKm)
+					{
+						var examinerLocation = new ExaminerLocation
+						{
+							ExaminerId = examiner.Id,
+							Name = examiner.GetDisplayName(),
+							Email = examiner.Email,
+							Latitude = coords.Value.Item1,
+							Longitude = coords.Value.Item2,
+							DistanceKm = distance,
+							Specializations = examiner.Specializations
+						};
 
-                // Сортуємо по відстані та повертаємо топ 3
-                var result = nearbyExaminers
-                    .OrderBy(e => e.DistanceKm)
-                    .Take(3)
-                    .ToList();
+						if (string.IsNullOrEmpty(examType) || examiner.HasSpecialization(examType))
+						{
+							nearbyExaminers.Add(examinerLocation);
+						}
+					}
+				}
 
-                _logger.LogInformation($"Found {result.Count} nearby examiners within {radiusKm}km");
+				// Зберігаємо нові координати у БД одноразово
+				await _context.SaveChangesAsync();
 
-                foreach (var examiner in result)
-                {
-                    _logger.LogInformation($"  - {examiner.Name} ({examiner.DistanceKm:F1}km) - {string.Join(", ", examiner.Specializations)}");
-                }
+				var result = nearbyExaminers.OrderBy(e => e.DistanceKm).Take(3).ToList();
 
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error finding nearby examiners");
-                return new List<ExaminerLocation>();
-            }
-        }
+				_logger.LogInformation($"Found {result.Count} nearby examiners within {radiusKm}km");
+
+				foreach (var examiner in result)
+				{
+					_logger.LogInformation($"  - {examiner.Name} ({examiner.DistanceKm:F1}km) - {string.Join(", ", examiner.Specializations)}");
+				}
+
+				return result;
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error finding nearby examiners");
+				return new List<ExaminerLocation>();
+			}
+		}
 
         private async Task<(Models.Examiner examiner, (double, double)? coords)> GeocodeExaminerAsync(Models.Examiner examiner)
         {
