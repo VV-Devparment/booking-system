@@ -54,6 +54,14 @@ namespace ExamBookingSystem.Models
 
         [Column("Login")]
         public string? Login { get; set; }
+
+        // ВИПРАВЛЕНО: Тепер Latitude та Longitude мапляться на колонки в БД
+        [Column("Latitude")]
+        public double? Latitude { get; set; }
+
+        [Column("Longitude")]
+        public double? Longitude { get; set; }
+
         // Calculated properties для сумісності з існуючим кодом
         [NotMapped]
         public string FirstName
@@ -109,13 +117,6 @@ namespace ExamBookingSystem.Models
                 return specializations.Distinct().ToList();
             }
         }
-
-        // Географічні координати (будуть обчислюватися динамічно через геокодування)
-        [NotMapped]
-        public double? Latitude { get; set; }
-
-        [NotMapped]
-        public double? Longitude { get; set; }
 
         // Відстань від студента (обчислюється динамічно)
         [NotMapped]
