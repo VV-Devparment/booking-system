@@ -1020,7 +1020,7 @@ namespace ExamBookingSystem.Controllers
         }
 
 
-        [HttpPost("geocode-all-examiners")]
+        [HttpGet("geocode-all-examiners")]
         public async Task<ActionResult> GeocodeAllExaminers()
         {
             var examiners = await _context.Examiners
