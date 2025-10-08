@@ -844,6 +844,38 @@ namespace ExamBookingSystem.Controllers
                 return false;
             }
         }
+		
+		[HttpGet("diagnostics/examiners-with-coords")]
+		public async Task<ActionResult> GetExaminersWithCoordinates()
+		{
+			try
+			{
+				var totalExaminers = await _context.Examiners.CountAsync();
+				var examinersWithCoords = await _context.Examiners
+					.Where(e => e.Latitude != null && e.Longitude != null)
+					.CountAsync();
+				
+				var examinersWithoutCoords = await _context.Examiners
+					.Where(e => e.Latitude == null || e.Longitude == null)
+					.Take(10)
+					.Select(e => new { e.Name, e.Email, e.Address })
+					.ToListAsync();
+
+				return Ok(new
+				{
+					TotalExaminers = totalExaminers,
+					WithCoordinates = examinersWithCoords,
+					WithoutCoordinates = totalExaminers - examinersWithCoords,
+					PercentageWithCoords = (examinersWithCoords * 100.0 / totalExaminers),
+					SampleExaminersWithoutCoords = examinersWithoutCoords
+				});
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting examiner diagnostics");
+				return StatusCode(500, "Internal server error");
+			}
+		}
 
         [HttpGet("diagnose/{bookingId}")]
         public async Task<ActionResult> DiagnoseBooking(string bookingId)
@@ -871,6 +903,7 @@ namespace ExamBookingSystem.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+		
         [HttpGet("available-for-examiner")]
         public async Task<ActionResult> GetAvailableBookingsForExaminer(
        [FromQuery] string? examinerEmail = null,

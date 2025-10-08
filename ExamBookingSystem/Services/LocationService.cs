@@ -36,73 +36,55 @@ namespace ExamBookingSystem.Services
 		{
 			try
 			{
-				_logger.LogInformation($"Searching for examiners within {radiusKm}km of ({latitude}, {longitude})");
+				_logger.LogInformation($"Searching for examiners within {radiusKm}km of ({latitude}, {longitude}), examType: {examType ?? "ANY"}");
 
-				// Отримуємо всіх активних екзаменаторів з БД
-				var examiners = await _context.GetActiveExaminersAsync();
+				// Отримуємо тільки екзаменаторів які ВRЖЕ МАЮТЬ координати в БД
+				var examiners = await _context.Examiners
+					.Where(e => e.Latitude != null && e.Longitude != null)
+					.Where(e => !string.IsNullOrEmpty(e.Email))
+					.ToListAsync();
 
 				if (!examiners.Any())
 				{
-					_logger.LogWarning("No examiners found in database");
+					_logger.LogWarning("No examiners with coordinates found in database");
 					return new List<ExaminerLocation>();
 				}
 
-				_logger.LogInformation($"Processing {examiners.Count} examiners from database");
+				_logger.LogInformation($"Processing {examiners.Count} examiners with coordinates from database");
 
 				var nearbyExaminers = new List<ExaminerLocation>();
-				var geocodeTasks = new List<Task<(Models.Examiner examiner, (double, double)? coords)>>();
 
-				// Для кожного екзаменатора: якщо координати вже є в БД, беремо їх, інакше геокодуємо
+				// Обробляємо тільки тих, хто має координати
 				foreach (var examiner in examiners)
 				{
-					(double, double)? coords = null;
-					if (examiner.Latitude.HasValue && examiner.Longitude.HasValue)
-						coords = (examiner.Latitude.Value, examiner.Longitude.Value);
-
-					if (coords.HasValue)
-					{
-						// Використовуємо наявні координати з БД
-						geocodeTasks.Add(Task.FromResult((examiner, coords)));
-					}
-					else
-					{
-						// Геокодуємо адресу
-						geocodeTasks.Add(GeocodeExaminerAsync(examiner));
-					}
-				}
-
-				var geocodeResults = await Task.WhenAll(geocodeTasks);
-
-				// Фільтруємо по відстані та спеціалізації
-				foreach (var (examiner, coords) in geocodeResults)
-				{
-					if (!coords.HasValue)
-					{
-						_logger.LogDebug($"Skipping {examiner.Name} - no coordinates");
-						continue;
-					}
-
 					var distance = CalculateDistance(
 						latitude, longitude,
-						coords.Value.Item1, coords.Value.Item2);
+						examiner.Latitude!.Value, examiner.Longitude!.Value);
+
+					_logger.LogDebug($"Examiner {examiner.Name}: distance = {distance:F1}km, specializations = {string.Join(", ", examiner.Specializations)}");
 
 					if (distance <= radiusKm)
 					{
-						var examinerLocation = new ExaminerLocation
-						{
-							ExaminerId = examiner.Id,
-							Name = examiner.GetDisplayName(),
-							Email = examiner.Email,
-							Latitude = coords.Value.Item1,
-							Longitude = coords.Value.Item2,
-							DistanceKm = distance,
-							Specializations = examiner.Specializations
-						};
-
 						// Фільтруємо по типу екзамену якщо вказано
 						if (string.IsNullOrEmpty(examType) || examiner.HasSpecialization(examType))
 						{
+							var examinerLocation = new ExaminerLocation
+							{
+								ExaminerId = examiner.Id,
+								Name = examiner.GetDisplayName(),
+								Email = examiner.Email,
+								Latitude = examiner.Latitude.Value,
+								Longitude = examiner.Longitude.Value,
+								DistanceKm = distance,
+								Specializations = examiner.Specializations
+							};
+
 							nearbyExaminers.Add(examinerLocation);
+							_logger.LogDebug($"✅ Added examiner {examiner.Name} ({distance:F1}km)");
+						}
+						else
+						{
+							_logger.LogDebug($"❌ Examiner {examiner.Name} skipped - no matching specialization for {examType}");
 						}
 					}
 				}
@@ -117,7 +99,7 @@ namespace ExamBookingSystem.Services
 
 				foreach (var examiner in result)
 				{
-					_logger.LogInformation($"  - {examiner.Name} ({examiner.DistanceKm:F1}km) - {string.Join(", ", examiner.Specializations)}");
+					_logger.LogInformation($"  ✅ {examiner.Name} ({examiner.DistanceKm:F1}km) - {string.Join(", ", examiner.Specializations)}");
 				}
 
 				return result;
@@ -205,16 +187,16 @@ namespace ExamBookingSystem.Services
             }
 
             // 3. MapBox (альтернатива)
-            var mapBoxKey = _configuration["Geocoding:MapBox:AccessToken"];
-            if (!string.IsNullOrEmpty(mapBoxKey))
-            {
-                var result = await TryMapBoxGeocoding(address, mapBoxKey);
-                if (result.HasValue) return result;
-            }
+			var mapBoxKey = _configuration["Geocoding:MapBox:AccessToken"];
+			if (!string.IsNullOrEmpty(mapBoxKey))
+			{
+				var result = await TryMapBoxGeocoding(address, mapBoxKey);
+				if (result.HasValue) return result;
+			}
 
-            // 4. Fallback до тестових координат для розробки
-            _logger.LogWarning($"All geocoding providers failed for: {address}. Using fallback coordinates.");
-            return GetFallbackCoordinates(address);
+			// ВИДАЛЕНО fallback - повертаємо null
+			_logger.LogWarning($"All geocoding providers failed for: {address}. No coordinates available.");
+			return null;
         }
 
         private async Task<(double lat, double lon)?> TryOpenCageGeocoding(string address, string apiKey)
@@ -311,46 +293,6 @@ namespace ExamBookingSystem.Services
             }
 
             return null;
-        }
-
-        private (double lat, double lon)? GetFallbackCoordinates(string address)
-        {
-            // Тестові координати на основі штатів США для розробки
-            var addressLower = address.ToLower();
-
-            var stateCoords = new Dictionary<string, (double lat, double lon)>
-            {
-                { "tx", (31.9686, -99.9018) }, // Texas
-                { "texas", (31.9686, -99.9018) },
-                { "ca", (36.7783, -119.4179) }, // California  
-                { "california", (36.7783, -119.4179) },
-                { "ny", (42.1657, -74.9481) }, // New York
-                { "new york", (42.1657, -74.9481) },
-                { "fl", (27.7663, -81.6868) }, // Florida
-                { "florida", (27.7663, -81.6868) },
-                { "il", (40.3363, -89.0022) }, // Illinois
-                { "illinois", (40.3363, -89.0022) },
-                { "pa", (41.2033, -77.1945) }, // Pennsylvania
-                { "pennsylvania", (41.2033, -77.1945) }
-            };
-
-            foreach (var (state, coords) in stateCoords)
-            {
-                if (addressLower.Contains(state))
-                {
-                    // Додаємо невелике випадкове зміщення для різноманітності
-                    var random = new Random(address.GetHashCode());
-                    var lat = coords.lat + (random.NextDouble() - 0.5) * 2; // ±1 градус
-                    var lon = coords.lon + (random.NextDouble() - 0.5) * 2;
-
-                    return (lat, lon);
-                }
-            }
-
-            // Якщо штат не знайдено, використовуємо координати центру США
-            var centerRandom = new Random(address.GetHashCode());
-            return (39.8283 + (centerRandom.NextDouble() - 0.5) * 10,
-                    -98.5795 + (centerRandom.NextDouble() - 0.5) * 20);
         }
 
         public double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
