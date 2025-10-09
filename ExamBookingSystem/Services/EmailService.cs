@@ -187,7 +187,13 @@ namespace ExamBookingSystem.Services
                 </div>
                 
                 <p>Please use the examiner portal to respond with your availability, venue details, and pricing.</p>
-                
+
+                <div style='margin-top: 30px; text-align: center;'>
+                    <a href='https://booking-system-xpbx.onrender.com/' style='display: inline-block; padding: 14px 35px; background: linear-gradient(135deg, #5CADD3 0%, #2c3e50 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;'>
+                        → Go to JUMPSEAT
+                    </a>
+                </div>                
+
                 <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 12px;'>
                     <p>This is an automated message from JUMPSEAT Team.<br>
                     Do not reply to this email.</p>
