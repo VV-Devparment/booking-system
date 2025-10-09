@@ -175,10 +175,10 @@
 
 
 	.iti__selected-dial-code {
-		color: #2c3e50;
-		font-weight: 600;
-		font-size: 0.9rem;
-		min-width: 40px;
+    color: #2c3e50 !important;
+    font-weight: 500 !important;
+    font-size: 0.9rem !important;
+    margin-right: 4px !important; /* ДОДАНО: відступ перед стрілкою */
 	}
 
 	.iti__country-list {
@@ -218,9 +218,14 @@
 	}
 
 	.iti__arrow {
-		border-left-color: #5CADD3;
-		border-right-color: #5CADD3;
-		margin-left: 4px;
+    margin-left: 6px !important;
+    border-left: 3px solid transparent !important;
+    border-right: 3px solid transparent !important;
+    border-top: 4px solid #555 !important;
+    width: 0 !important;
+    height: 0 !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
 	}
 
 	.iti__area-code {
@@ -414,14 +419,21 @@
 
 .iti__arrow--up {
     border-top: none !important;
-    border-bottom: 4px solid #5CADD3 !important;
+    border-bottom: 4px solid #555 !important;
 }
 
 /* Mobile responsiveness */
 @media (max-width: 576px) {
     .iti__selected-flag {
-        width: 80px !important;
-    }
+    width: 100px !important;
+    padding: 0 8px !important;
+    background: #f8f9fa !important;
+    border-radius: 8px 0 0 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important; /* ВИПРАВЛЕНО: рівномірний розподіл */
+    height: 100% !important;
+	}
 
     .iti input {
         padding-left: 100px !important;
