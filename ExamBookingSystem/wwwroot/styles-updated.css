@@ -175,10 +175,10 @@
 
 
 	.iti__selected-dial-code {
-    color: #2c3e50 !important;
-    font-weight: 500 !important;
-    font-size: 0.9rem !important;
-    margin-right: 4px !important; /* ДОДАНО: відступ перед стрілкою */
+		color: #2c3e50;
+		font-weight: 600;
+		font-size: 0.9rem;
+		min-width: 40px;
 	}
 
 	.iti__country-list {
@@ -218,14 +218,9 @@
 	}
 
 	.iti__arrow {
-    margin-left: 6px !important;
-    border-left: 3px solid transparent !important;
-    border-right: 3px solid transparent !important;
-    border-top: 4px solid #555 !important;
-    width: 0 !important;
-    height: 0 !important;
-    display: inline-block !important;
-    vertical-align: middle !important;
+		border-left-color: #5CADD3;
+		border-right-color: #5CADD3;
+		margin-left: 4px;
 	}
 
 	.iti__area-code {
@@ -246,15 +241,9 @@
 		z-index: 1001 !important;
 	}
 /* ============== FIXED International Tel Input Styles ============== */
-
 .iti {
     width: 100% !important;
     display: block !important;
-    position: relative !important;
-}
-
-.iti--allow-dropdown {
-    position: relative !important;
 }
 
 .iti__flag-container {
@@ -265,57 +254,47 @@
     padding: 0 !important;
     background: transparent !important;
     border: none !important;
-    width: auto !important;
-    height: 100% !important;
-    z-index: 2 !important;
+    border-right: 1px solid #e0e6ed !important;
+    border-radius: 10px 0 0 10px !important;
+    z-index: 3 !important;
 }
 
 .iti__selected-flag {
-    width: auto !important;
-    min-width: 60px !important;
-    padding: 0 12px !important;
+    width: 100px !important;
+    padding: 0 8px !important;
     background: #f8f9fa !important;
     border-radius: 8px 0 0 8px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 6px !important;
     height: 100% !important;
-    border-right: 1px solid #e0e6ed !important;
 }
 
 .iti--allow-dropdown .iti__flag-container:hover .iti__selected-flag,
 .iti--allow-dropdown .iti__flag-container:focus .iti__selected-flag {
-    background-color: #f0f5ff !important;
+    background-color: #f8f9fa !important;
 }
 
 .iti__flag {
     margin-right: 6px !important;
     display: inline-block !important;
     vertical-align: middle !important;
-    width: 24px !important;
-    height: 18px !important;
-    flex-shrink: 0 !important;
 }
 
 .iti__selected-dial-code {
     color: #2c3e50 !important;
-    font-weight: 600 !important;
+    font-weight: 500 !important;
     font-size: 0.9rem !important;
-    white-space: nowrap !important;
-    flex: 1 !important;
-    text-align: center !important;
-    margin: 0 4px !important;
 }
 
-/* Телефонне поле введення */
 .iti input,
 .iti input[type=text],
 .iti input[type=tel] {
     position: relative !important;
-    z-index: 1 !important;
-    margin: 0 !important;
-    padding-left: 120px !important;
+    z-index: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-left: 110px !important;
     padding-right: 15px !important;
     padding-top: 12px !important;
     padding-bottom: 12px !important;
@@ -326,36 +305,34 @@
     height: calc(2.5rem + 2px) !important;
     line-height: 1.5 !important;
     background-color: #fff !important;
-    box-sizing: border-box !important;
+    background-clip: padding-box !important;
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
 }
 
-.iti input:focus {
-    border-color: #5CADD3 !important;
-    outline: 0 !important;
-    box-shadow: 0 0 0 0.2rem rgba(92, 173, 211, 0.25) !important;
-}
+    .iti input:focus {
+        border-color: #5CADD3 !important;
+        outline: 0 !important;
+        box-shadow: 0 0 0 0.2rem rgba(92, 173, 211, 0.25) !important;
+    }
 
-/* Dropdown список країн */
 .iti__country-list {
     position: absolute !important;
     z-index: 1050 !important;
     list-style: none !important;
     text-align: left !important;
     padding: 0 !important;
-    margin: 5px 0 0 0 !important;
+    margin: 0 0 0 -1px !important;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
     background-color: white !important;
     border: 1px solid #e0e6ed !important;
     border-radius: 8px !important;
     white-space: nowrap !important;
     max-height: 250px !important;
-    overflow-y: auto !important;
+    overflow-y: scroll !important;
     -webkit-overflow-scrolling: touch !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-    top: 100% !important;
-    left: 0 !important;
 }
 
 .iti__divider {
@@ -368,53 +345,43 @@
     padding: 10px 15px !important;
     outline: none !important;
     transition: background-color 0.15s !important;
-    display: flex !important;
-    align-items: center !important;
-    cursor: pointer !important;
 }
 
-.iti__country:hover {
-    background-color: #f0f5ff !important;
-    color: #5CADD3 !important;
-}
+    .iti__country:hover {
+        background-color: #f0f5ff !important;
+    }
 
-.iti__country.iti__highlight {
-    background-color: #e8f4fd !important;
-}
+    .iti__country.iti__highlight {
+        background-color: #e8f4fd !important;
+    }
 
 .iti__flag-box {
-    display: inline-flex !important;
-    align-items: center !important;
-    margin-right: 10px !important;
-    flex-shrink: 0 !important;
+    display: inline-block !important;
+    width: 20px !important;
+}
+
+.iti__country-name,
+.iti__dial-code {
+    vertical-align: middle !important;
 }
 
 .iti__country-name {
-    flex: 1 !important;
-    margin-right: 8px !important;
+    margin-right: 6px !important;
 }
 
 .iti__dial-code {
     color: #6c757d !important;
-    margin-left: auto !important;
-    font-size: 0.85rem !important;
 }
 
-/* Стрілка dropdown - НАЙВАЖЛИВІША ЧАСТИНА */
 .iti__arrow {
-    position: absolute !important;
-    right: 8px !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
+    margin-left: 6px !important;
     border-left: 3px solid transparent !important;
     border-right: 3px solid transparent !important;
-    border-top: 4px solid #5CADD3 !important;
-    border-bottom: 0 !important;
+    border-top: 4px solid #555 !important;
+    position: relative !important;
+    top: 50% !important;
+    margin-top: -2px !important;
     display: inline-block !important;
-    z-index: 3 !important;
-    width: 0 !important;
-    height: 0 !important;
-    pointer-events: none !important;
 }
 
 .iti__arrow--up {
@@ -422,21 +389,23 @@
     border-bottom: 4px solid #555 !important;
 }
 
+/* Видаляємо inline стилі з JavaScript */
+.iti--separate-dial-code .iti__selected-flag {
+    background-color: #f8f9fa !important;
+}
+
+.iti--separate-dial-code .iti__selected-dial-code {
+    margin-left: 6px !important;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 576px) {
     .iti__selected-flag {
-    width: 100px !important;
-    padding: 0 8px !important;
-    background: #f8f9fa !important;
-    border-radius: 8px 0 0 8px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important; /* ВИПРАВЛЕНО: рівномірний розподіл */
-    height: 100% !important;
-	}
+        width: 90px !important;
+    }
 
     .iti input {
         padding-left: 100px !important;
-        font-size: 16px !important;
+        font-size: 16px !important; /* Prevent zoom on iOS */
     }
 }
