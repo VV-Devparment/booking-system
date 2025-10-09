@@ -29,87 +29,110 @@ namespace ExamBookingSystem.Services
         }
 
         public async Task<List<ExaminerLocation>> FindNearbyExaminersAsync(
-			double latitude,
-			double longitude,
-			double radiusKm = 50,
-			string? examType = null)
-		{
-			try
-			{
-				_logger.LogInformation($"Searching for examiners within {radiusKm}km of ({latitude}, {longitude}), examType: {examType ?? "ANY"}");
+    double latitude,
+    double longitude,
+    double radiusKm = 50,
+    string? examType = null)
+        {
+            try
+            {
+                _logger.LogInformation($"=== SEARCHING FOR EXAMINERS ===");
+                _logger.LogInformation($"Location: ({latitude}, {longitude})");
+                _logger.LogInformation($"Radius: {radiusKm}km");
+                _logger.LogInformation($"Exam Type: {examType ?? "ANY"}");
 
-				// Отримуємо тільки екзаменаторів які ВRЖЕ МАЮТЬ координати в БД
-				var examiners = await _context.Examiners
-					.Where(e => e.Latitude != null && e.Longitude != null)
-					.Where(e => !string.IsNullOrEmpty(e.Email))
-					.ToListAsync();
+                // Отримуємо тільки екзаменаторів які ВЖЕ МАЮТЬ координати в БД
+                var examiners = await _context.Examiners
+                    .Where(e => e.Latitude != null && e.Longitude != null)
+                    .Where(e => !string.IsNullOrEmpty(e.Email))
+                    .ToListAsync();
 
-				if (!examiners.Any())
-				{
-					_logger.LogWarning("No examiners with coordinates found in database");
-					return new List<ExaminerLocation>();
-				}
+                if (!examiners.Any())
+                {
+                    _logger.LogWarning("❌ No examiners with coordinates found in database");
+                    return new List<ExaminerLocation>();
+                }
 
-				_logger.LogInformation($"Processing {examiners.Count} examiners with coordinates from database");
+                _logger.LogInformation($"📊 Processing {examiners.Count} examiners with coordinates from database");
 
-				var nearbyExaminers = new List<ExaminerLocation>();
+                // Отримуємо список потрібних кваліфікацій
+                List<string>? requiredQualifications = null;
+                if (!string.IsNullOrEmpty(examType))
+                {
+                    requiredQualifications = ExamTypeMapper.GetQualificationsForExamType(examType);
+                    _logger.LogInformation($"🎯 Required qualifications: {string.Join(", ", requiredQualifications)}");
+                }
 
-				// Обробляємо тільки тих, хто має координати
-				foreach (var examiner in examiners)
-				{
-					var distance = CalculateDistance(
-						latitude, longitude,
-						examiner.Latitude!.Value, examiner.Longitude!.Value);
+                var nearbyExaminers = new List<ExaminerLocation>();
+                int withinRadius = 0;
+                int qualificationMismatch = 0;
 
-					_logger.LogDebug($"Examiner {examiner.Name}: distance = {distance:F1}km, specializations = {string.Join(", ", examiner.Specializations)}");
+                foreach (var examiner in examiners)
+                {
+                    var distance = CalculateDistance(
+                        latitude, longitude,
+                        examiner.Latitude!.Value, examiner.Longitude!.Value);
 
-					if (distance <= radiusKm)
-					{
-						// Фільтруємо по типу екзамену якщо вказано
-						if (string.IsNullOrEmpty(examType) || examiner.HasSpecialization(examType))
-						{
-							var examinerLocation = new ExaminerLocation
-							{
-								ExaminerId = examiner.Id,
-								Name = examiner.GetDisplayName(),
-								Email = examiner.Email,
-								Latitude = examiner.Latitude.Value,
-								Longitude = examiner.Longitude.Value,
-								DistanceKm = distance,
-								Specializations = examiner.Specializations
-							};
+                    if (distance <= radiusKm)
+                    {
+                        withinRadius++;
 
-							nearbyExaminers.Add(examinerLocation);
-							_logger.LogDebug($"✅ Added examiner {examiner.Name} ({distance:F1}km)");
-						}
-						else
-						{
-							_logger.LogDebug($"❌ Examiner {examiner.Name} skipped - no matching specialization for {examType}");
-						}
-					}
-				}
+                        // Перевіряємо кваліфікації (ВИПРАВЛЕНО: використовуємо Qualification без 's')
+                        bool hasQualification = true;
 
-				// Сортуємо по відстані та повертаємо топ 3
-				var result = nearbyExaminers
-					.OrderBy(e => e.DistanceKm)
-					.Take(3)
-					.ToList();
+                        if (requiredQualifications != null && requiredQualifications.Any())
+                        {
+                            hasQualification = ExamTypeMapper.HasMatchingQualification(
+                                examiner.Qualification,  // ← ВИПРАВЛЕНО: було Qualifications
+                                examType!);
 
-				_logger.LogInformation($"Found {result.Count} nearby examiners within {radiusKm}km");
+                            if (!hasQualification)
+                            {
+                                qualificationMismatch++;
+                                _logger.LogDebug($"❌ {examiner.Name} ({distance:F1}km) - qualification '{examiner.Qualification}' doesn't match");
+                            }
+                        }
 
-				foreach (var examiner in result)
-				{
-					_logger.LogInformation($"  ✅ {examiner.Name} ({examiner.DistanceKm:F1}km) - {string.Join(", ", examiner.Specializations)}");
-				}
+                        if (hasQualification)
+                        {
+                            var examinerLocation = new ExaminerLocation
+                            {
+                                ExaminerId = examiner.Id,
+                                Name = examiner.GetDisplayName(),
+                                Email = examiner.Email,
+                                Latitude = examiner.Latitude.Value,
+                                Longitude = examiner.Longitude.Value,
+                                DistanceKm = distance,
+                                Specializations = examiner.Specializations
+                            };
 
-				return result;
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error finding nearby examiners");
-				return new List<ExaminerLocation>();
-			}
-		}
+                            nearbyExaminers.Add(examinerLocation);
+                            _logger.LogInformation($"✅ {examiner.Name} ({distance:F1}km) - Qualification: {examiner.Qualification}");
+                        }
+                    }
+                }
+
+                _logger.LogInformation($"📈 Statistics:");
+                _logger.LogInformation($"   - Total examiners in DB: {examiners.Count}");
+                _logger.LogInformation($"   - Within radius: {withinRadius}");
+                _logger.LogInformation($"   - Qualification mismatch: {qualificationMismatch}");
+                _logger.LogInformation($"   - Final matches: {nearbyExaminers.Count}");
+
+                var result = nearbyExaminers
+                    .OrderBy(e => e.DistanceKm)
+                    .Take(3)
+                    .ToList();
+
+                _logger.LogInformation($"🎉 Returning {result.Count} examiners");
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error finding nearby examiners");
+                return new List<ExaminerLocation>();
+            }
+        }
 
         private async Task<(Models.Examiner examiner, (double, double)? coords)> GeocodeExaminerAsync(Models.Examiner examiner)
         {
