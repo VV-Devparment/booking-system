@@ -70,11 +70,14 @@ namespace ExamBookingSystem.Controllers
 
                 // 3. Find nearby examiners
                 var radiusKm = request.SearchRadius * 1.852; // Перетворюємо nautical miles в km
+                var normalizedExamType = NormalizeExamType(request.CheckRideType);
+                _logger.LogInformation($"Normalized exam type: '{request.CheckRideType}' -> '{normalizedExamType}'");
+
                 var nearbyExaminers = await _locationService.FindNearbyExaminersAsync(
                     coordinates.Value.Latitude,
                     coordinates.Value.Longitude,
                     radiusKm,
-                    request.CheckRideType);
+                    normalizedExamType);  // ← Використовуємо нормалізоване значення
 
                 if (!nearbyExaminers.Any())
                 {
@@ -117,6 +120,47 @@ namespace ExamBookingSystem.Controllers
                 await _slackService.NotifyErrorAsync("Booking creation failed", ex.Message);
                 return StatusCode(500, "Internal server error while processing booking request");
             }
+        }
+
+        private string? NormalizeExamType(string? examType)
+        {
+            if (string.IsNullOrWhiteSpace(examType))
+                return null;
+
+            var normalized = examType.Trim();
+
+            // Маппінг повних назв на скорочені
+            if (normalized.Contains("Private", StringComparison.OrdinalIgnoreCase))
+                return "Private";
+
+            if (normalized.Contains("Instrument", StringComparison.OrdinalIgnoreCase))
+                return "Instrument";
+
+            if (normalized.Contains("Commercial", StringComparison.OrdinalIgnoreCase))
+                return "Commercial";
+
+            if (normalized.Contains("CFI", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Contains("Flight Instructor", StringComparison.OrdinalIgnoreCase))
+                return "CFI";
+
+            if (normalized.Contains("CFII", StringComparison.OrdinalIgnoreCase))
+                return "CFII";
+
+            if (normalized.Contains("MEI", StringComparison.OrdinalIgnoreCase))
+                return "MEI";
+
+            if (normalized.Contains("ATP", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Contains("Airline Transport", StringComparison.OrdinalIgnoreCase))
+                return "ATP";
+
+            if (normalized.Contains("Multi", StringComparison.OrdinalIgnoreCase))
+                return "MultiEngine";
+
+            if (normalized.Contains("Sport", StringComparison.OrdinalIgnoreCase))
+                return "SportPilot";
+
+            _logger.LogWarning($"Could not normalize exam type: '{examType}'");
+            return normalized;
         }
 
         [HttpPost("examiner/respond")]
