@@ -241,7 +241,6 @@
 		z-index: 1001 !important;
 	}
 /* ============== FIXED International Tel Input Styles ============== */
-/* ============== FIXED International Tel Input Styles ============== */
 
 .iti {
     width: 100% !important;
@@ -267,13 +266,15 @@
 }
 
 .iti__selected-flag {
-    width: 100px !important;
-    padding: 0 10px !important;
+    width: auto !important;
+    min-width: 60px !important;
+    padding: 0 12px !important;
     background: #f8f9fa !important;
     border-radius: 8px 0 0 8px !important;
     display: flex !important;
     align-items: center !important;
-    justify-content: space-between !important;
+    justify-content: center !important;
+    gap: 6px !important;
     height: 100% !important;
     border-right: 1px solid #e0e6ed !important;
 }
@@ -287,9 +288,13 @@
     margin-right: 6px !important;
     display: inline-block !important;
     vertical-align: middle !important;
-    width: 24px !important;
-    height: 18px !important;
+    width: 28px !important;
+    height: 20px !important;
     flex-shrink: 0 !important;
+    border-radius: 2px !important;
+    background-size: contain !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
 }
 
 .iti__selected-dial-code {
@@ -359,12 +364,13 @@
 }
 
 .iti__country {
-    padding: 10px 15px !important;
+    padding: 12px 15px !important;
     outline: none !important;
     transition: background-color 0.15s !important;
     display: flex !important;
     align-items: center !important;
     cursor: pointer !important;
+    min-height: 44px !important;
 }
 
 .iti__country:hover {
@@ -379,8 +385,10 @@
 .iti__flag-box {
     display: inline-flex !important;
     align-items: center !important;
-    margin-right: 10px !important;
+    margin-right: 8px !important;
     flex-shrink: 0 !important;
+    width: 28px !important;
+    height: 20px !important;
 }
 
 .iti__country-name {
@@ -427,5 +435,3 @@
         font-size: 16px !important;
     }
 }
-
-
