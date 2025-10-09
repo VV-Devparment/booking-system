@@ -138,36 +138,116 @@
             border-color: #667eea;
             box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
         }
-/* Стилі для international tel input */
-.iti {
-    width: 100%;
-}
 
-.iti__flag-container {
-    background: white;
-}
+	/* ============== International Tel Input Fix ============== */
+	.iti {
+		width: 100%;
+		display: block;
+	}
 
-.iti input {
-    width: 100%;
-    padding: 10px 15px;
-    padding-left: 80px !important;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    height: calc(2.5rem + 2px);
-}
+	.iti--allow-dropdown input {
+		width: 100%;
+		padding: 12px 15px;
+		padding-left: 120px !important;
+		border: 1px solid #e0e6ed;
+		border-radius: 10px;
+		font-size: 0.95rem;
+		height: calc(2.5rem + 2px);
+		transition: all 0.15s ease;
+		box-sizing: border-box;
+	}
 
-    .iti input:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        outline: none;
-    }
+		.iti--allow-dropdown input:focus {
+			border-color: #5CADD3;
+			box-shadow: 0 3px 10px 0 rgba(94, 114, 228, 0.15);
+			outline: none;
+		}
 
-.iti__selected-flag {
-    padding: 0 10px;
-}
+	.iti__flag-container {
+		background: white;
+		border-radius: 10px 0 0 10px;
+		padding: 0 8px;
+		display: flex;
+		align-items: center;
+	}
 
-.iti__country-list {
-    max-height: 200px;
-    overflow-y: auto;
-}
+	.iti__selected-flag {
+		padding: 0 8px;
+		width: auto;
+		height: auto;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.iti__flag {
+		width: 28px !important;
+		height: 22px !important;
+	}
+
+	.iti__selected-dial-code {
+		color: #2c3e50;
+		font-weight: 600;
+		font-size: 0.9rem;
+		min-width: 40px;
+	}
+
+	.iti__country-list {
+		border: 1px solid #e0e6ed;
+		border-radius: 10px;
+		margin-top: 5px;
+		max-height: 250px;
+		overflow-y: auto;
+		box-shadow: 0 4px 6px rgba(50, 50, 93, 0.1);
+		z-index: 1000;
+	}
+
+	.iti__country {
+		padding: 10px 15px;
+		cursor: pointer;
+		font-size: 0.9rem;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+
+		.iti__country:hover,
+		.iti__country.iti__highlight {
+			background: #f0f5ff;
+			color: #5CADD3;
+		}
+
+	.iti__country-name {
+		flex: 1;
+	}
+
+	.iti__dial-code {
+		color: #6c757d;
+		margin-left: auto;
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
+
+	.iti__arrow {
+		border-left-color: #5CADD3;
+		border-right-color: #5CADD3;
+		margin-left: 4px;
+	}
+
+	.iti__area-code {
+		color: #6c757d;
+		font-size: 0.85rem;
+	}
+
+	.form-label {
+		color: var(--dark);
+		font-weight: 600;
+		font-size: 0.875rem;
+		text-transform: uppercase;
+		letter-spacing: 0.025em;
+		margin-bottom: 0.75rem;
+	}
+
+	.iti__dropdown {
+		z-index: 1001 !important;
+	}
