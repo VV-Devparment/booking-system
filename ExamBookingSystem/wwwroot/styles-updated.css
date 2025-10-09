@@ -378,10 +378,9 @@
     border-left: 3px solid transparent !important;
     border-right: 3px solid transparent !important;
     border-top: 4px solid #555 !important;
-    position: relative !important;
-    top: 50% !important;
-    margin-top: -2px !important;
     display: inline-block !important;
+    vertical-align: middle !important;
+    transform: translateY(-1px) !important;
 }
 
 .iti__arrow--up {
