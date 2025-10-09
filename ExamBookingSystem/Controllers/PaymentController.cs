@@ -156,7 +156,7 @@ namespace ExamBookingSystem.Controllers
                 _logger.LogInformation($"=== WEBHOOK BODY ===\n{json.Substring(0, Math.Min(json.Length, 500))}");
                 var webhookSecret = _configuration["Stripe:WebhookSecret"];
 
-                if (string.IsNullOrEmpty(webhookSecret) || webhookSecret == "whsec_duxJqOpIfxpxrUwhzsceV0lQgP256BMB")
+                if (string.IsNullOrEmpty(webhookSecret) || webhookSecret == "whsec_f7a9a300fced78fe9f974b07afb42dd73a699a002e178ed33c442d13b8db77f9")
                 {
                     _logger.LogWarning("⚠️ Webhook signature validation SKIPPED (test mode)");
                     stripeEvent = EventUtility.ParseEvent(json);
@@ -319,7 +319,7 @@ namespace ExamBookingSystem.Controllers
                     coordinates.Value.Latitude,
                     coordinates.Value.Longitude,
                     radiusKm,
-                    request.CheckRideType);
+                    bookingData.CheckRideType);
 
                 if (!nearbyExaminers.Any())
                 {
@@ -357,47 +357,6 @@ namespace ExamBookingSystem.Controllers
                 throw;
             }
         }
-		
-		private string? NormalizeExamType(string? examType)
-		{
-			if (string.IsNullOrWhiteSpace(examType))
-				return null;
-
-			var normalized = examType.Trim();
-
-			// Маппінг повних назв на скорочені
-			if (normalized.Contains("Private", StringComparison.OrdinalIgnoreCase))
-				return "Private";
-			
-			if (normalized.Contains("Instrument", StringComparison.OrdinalIgnoreCase))
-				return "Instrument";
-			
-			if (normalized.Contains("Commercial", StringComparison.OrdinalIgnoreCase))
-				return "Commercial";
-			
-			if (normalized.Contains("CFI", StringComparison.OrdinalIgnoreCase) || 
-				normalized.Contains("Flight Instructor", StringComparison.OrdinalIgnoreCase))
-				return "CFI";
-			
-			if (normalized.Contains("CFII", StringComparison.OrdinalIgnoreCase))
-				return "CFII";
-			
-			if (normalized.Contains("MEI", StringComparison.OrdinalIgnoreCase))
-				return "MEI";
-			
-			if (normalized.Contains("ATP", StringComparison.OrdinalIgnoreCase) || 
-				normalized.Contains("Airline Transport", StringComparison.OrdinalIgnoreCase))
-				return "ATP";
-			
-			if (normalized.Contains("Multi", StringComparison.OrdinalIgnoreCase))
-				return "MultiEngine";
-			
-			if (normalized.Contains("Sport", StringComparison.OrdinalIgnoreCase))
-				return "SportPilot";
-
-			_logger.LogWarning($"Could not normalize exam type: '{examType}'");
-			return normalized;
-		}
 
         private async Task CreateMinimalBooking(Session session)
         {
