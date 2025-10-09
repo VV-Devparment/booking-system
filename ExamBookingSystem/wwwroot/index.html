@@ -399,30 +399,39 @@
     <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/intlTelInput.min.js"></script>
     <script>
         // Ініціалізація international phone input
-        const phoneInput = document.querySelector("#phone");
-        const iti = window.intlTelInput(phoneInput, {
-            preferredCountries: ["us", "ca", "gb", "au", "ua"],
-            separateDialCode: true,
-            utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/utils.js",
-            customContainer: "form-control p-0"
+        document.addEventListener('DOMContentLoaded', function () {
+            const phoneInput = document.querySelector("#phone");
+            if (phoneInput) {
+                const iti = window.intlTelInput(phoneInput, {
+                    preferredCountries: ["us", "ca", "gb", "au", "ua"],
+                    separateDialCode: true,
+                    utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/utils.js",
+                    initialCountry: "us",
+                    autoPlaceholder: "aggressive",
+                    nationalMode: false,
+                    formatOnDisplay: true
+                });
+
+                // Робимо iti глобальним для доступу з інших скриптів
+                window.phoneIti = iti;
+
+                // Видаляємо всі inline стилі що додає бібліотека
+                setTimeout(() => {
+                    const itiContainer = phoneInput.closest('.iti');
+                    if (itiContainer) {
+                        itiContainer.removeAttribute('style');
+                        const flagContainer = itiContainer.querySelector('.iti__flag-container');
+                        if (flagContainer) {
+                            flagContainer.removeAttribute('style');
+                        }
+                        const selectedFlag = itiContainer.querySelector('.iti__selected-flag');
+                        if (selectedFlag) {
+                            selectedFlag.removeAttribute('style');
+                        }
+                    }
+                }, 100);
+            }
         });
-
-        // Робимо iti глобальним для доступу з інших скриптів
-        window.phoneIti = iti;
-
-        // Форсуємо стилі
-        const itiElement = document.querySelector('.iti');
-        if (itiElement) {
-            itiElement.style.width = '100%';
-            itiElement.style.display = 'block';
-        }
-
-        const phoneInputElement = document.querySelector('.iti input');
-        if (phoneInputElement) {
-            phoneInputElement.style.width = '100%';
-            phoneInputElement.style.paddingLeft = '80px';
-            phoneInputElement.style.height = 'calc(2.5rem + 2px)';
-        }
     </script>
 
 
