@@ -306,50 +306,114 @@ namespace ExamBookingSystem.Controllers
                 try
                 {
                     var emailBody = $@"
-                <html>
-                <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
-                    <div style='max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'>
-                        <h2 style='color: #28a745; text-align: center;'>Payment Successful!</h2>
-                        
-                        <p>Dear {bookingData.StudentFirstName} {bookingData.StudentLastName},</p>
-                        
-                        <p>Thank you for your payment. We have successfully received your booking request.</p>
-                        
-                        <div style='background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;'>
-                            <h3 style='margin-top: 0;'>Booking Details:</h3>
-                            <p><strong>Booking ID:</strong> {bookingId}</p>
-                            <p><strong>Exam Type:</strong> {bookingData.CheckRideType}</p>
-                            <p><strong>Preferred Location:</strong> {bookingData.PreferredAirport}</p>
-                            <p><strong>Preferred Date:</strong> {bookingData.StartDate?.ToString("MMMM dd, yyyy") ?? "ASAP"}</p>
-                            <p><strong>Payment Amount:</strong> ${_settingsService.GetBookingFee()}.00</p>
-                        </div>
-                        
-                        <div style='background-color: #e7f3ff; padding: 15px; border-radius: 5px; margin: 20px 0;'>
-                            <h3 style='margin-top: 0; color: #0066cc;'>What Happens Next?</h3>
-                            <ol>
-                                <li>We are now searching for available examiners in your area</li>
-                                <li>We will contact qualified examiners within your specified radius ({bookingData.SearchRadius} nautical miles)</li>
-                                <li>You will receive an email once an examiner accepts your booking</li>
-                                <li>The examiner will contact you directly to finalize scheduling details</li>
-                            </ol>
-                        </div>
-                        
-                        <p style='color: #666; font-size: 14px;'>
-                            If you have any questions, please don't hesitate to contact us. We typically match students with examiners within 24-48 hours.
-                        </p>
-                        
-                        <hr style='border: none; border-top: 1px solid #ddd; margin: 20px 0;'>
-                        
-                        <p style='color: #999; font-size: 12px; text-align: center;'>
-                            This is an automated confirmation email. Please do not reply to this message.
-                        </p>
-                    </div>
-                </body>
-                </html>";
+<html>
+<body style='margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;'>
+    <div style='max-width: 600px; margin: 0 auto; background-color: white;'>
+        <!-- Header -->
+        <div style='background: linear-gradient(135deg, #5CADD3 0%, #2c3e50 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;'>
+            <h1 style='color: white; margin: 0; font-size: 32px; font-weight: 600;'>JUMPSEAT</h1>
+            <p style='color: white; margin: 10px 0 0 0; font-size: 16px; opacity: 0.95;'>Your Path to Aviation Excellence</p>
+        </div>
+        
+        <!-- Success Banner -->
+        <div style='background-color: #d4edda; border-bottom: 3px solid #28a745; padding: 20px; text-align: center;'>
+            <div style='font-size: 48px; margin-bottom: 10px;'>✅</div>
+            <h2 style='color: #155724; margin: 0; font-size: 24px;'>Payment Confirmed!</h2>
+            <p style='color: #155724; margin: 5px 0 0 0;'>Your booking request has been received</p>
+        </div>
+        
+        <!-- Main Content -->
+        <div style='padding: 30px;'>
+            <p style='font-size: 16px; color: #333; margin-bottom: 25px;'>
+                Dear <strong>{bookingData.StudentFirstName} {bookingData.StudentLastName}</strong>,
+            </p>
+            
+            <p style='font-size: 15px; color: #555; line-height: 1.6;'>
+                Thank you for choosing JUMPSEAT for your examination needs. We've successfully received your payment and your booking request is now being processed.
+            </p>
+            
+            <!-- Booking Details Card -->
+            <div style='background: #f8f9fa; border-left: 4px solid #5CADD3; padding: 20px; margin: 25px 0; border-radius: 5px;'>
+                <h3 style='margin: 0 0 15px 0; color: #2c3e50; font-size: 18px;'>📋 Booking Information</h3>
+                <table style='width: 100%; border-collapse: collapse;'>
+                    <tr>
+                        <td style='padding: 8px 0; color: #666; width: 40%;'>Booking Reference:</td>
+                        <td style='padding: 8px 0; color: #333; font-weight: bold;'>{bookingId}</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 8px 0; color: #666;'>Exam Type:</td>
+                        <td style='padding: 8px 0; color: #333;'>{bookingData.CheckRideType}</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 8px 0; color: #666;'>Preferred Location:</td>
+                        <td style='padding: 8px 0; color: #333;'>{bookingData.PreferredAirport}</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 8px 0; color: #666;'>Preferred Date:</td>
+                        <td style='padding: 8px 0; color: #333;'>{(bookingData.StartDate?.ToString("MMMM dd, yyyy") ?? "ASAP")}</td>
+                    </tr>
+                    <tr style='border-top: 1px solid #dee2e6;'>
+                        <td style='padding: 12px 0 0 0; color: #666; font-size: 16px;'>Amount Paid:</td>
+                        <td style='padding: 12px 0 0 0; color: #28a745; font-size: 20px; font-weight: bold;'>${_settingsService.GetBookingFee()}.00</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <!-- Next Steps -->
+            <div style='background: linear-gradient(135deg, #e7f3ff 0%, #f0f7ff 100%); padding: 20px; margin: 25px 0; border-radius: 8px;'>
+                <h3 style='margin: 0 0 15px 0; color: #0066cc; font-size: 18px;'>🚀 What Happens Next?</h3>
+                <ol style='margin: 0; padding-left: 20px; color: #333; line-height: 1.8;'>
+                    <li style='margin-bottom: 8px;'>Our system is actively searching for qualified examiners in your area</li>
+                    <li style='margin-bottom: 8px;'>We'll contact available examiners within your specified radius</li>
+                    <li style='margin-bottom: 8px;'>Once an examiner accepts, you'll receive a confirmation email</li>
+                    <li style='margin-bottom: 8px;'>The examiner will contact you directly to finalize all details</li>
+                </ol>
+                <div style='background: white; padding: 12px; margin-top: 15px; border-radius: 5px; border-left: 3px solid #0066cc;'>
+                    <p style='margin: 0; color: #0066cc; font-size: 14px;'>
+                        <strong>⏱️ Expected Timeline:</strong> Most students are matched within 24-48 hours
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Important Notice -->
+            <div style='background: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin: 25px 0; border-radius: 5px;'>
+                <p style='margin: 0; color: #856404; font-size: 14px;'>
+                    <strong>📌 Important:</strong> Please ensure your phone is available as examiners may contact you directly. 
+                    Check your email regularly for updates on your booking status.
+                </p>
+            </div>
+            
+            <!-- Support Section -->
+            <div style='text-align: center; padding: 20px; background: #f8f9fa; border-radius: 5px; margin: 25px 0;'>
+                <p style='margin: 0 0 10px 0; color: #666; font-size: 14px;'>Need assistance?</p>
+                <p style='margin: 0; color: #333; font-size: 16px;'>
+                    Our support team is here to help<br>
+                    <a href='mailto:support@jumpseat.com' style='color: #5CADD3; text-decoration: none; font-weight: bold;'>support@jumpseat.com</a>
+                </p>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style='background: #2c3e50; padding: 25px; text-align: center; border-radius: 0 0 10px 10px;'>
+            <p style='color: #95a5a6; margin: 0 0 10px 0; font-size: 14px;'>
+                Thank you for choosing JUMPSEAT
+            </p>
+            <p style='color: #7f8c8d; margin: 0; font-size: 12px;'>
+                This is an automated confirmation email. Please do not reply directly to this message.
+            </p>
+            <div style='margin-top: 20px; padding-top: 20px; border-top: 1px solid #34495e;'>
+                <p style='color: #7f8c8d; margin: 0; font-size: 11px;'>
+                    © 2024 JUMPSEAT. All rights reserved.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>";
 
                     await _emailService.SendEmailAsync(
                         bookingData.StudentEmail,
-                        $"Payment Confirmed - Booking {bookingId}",
+                        $"✅ Payment Confirmed - Booking {bookingId}",
                         emailBody
                     );
 
