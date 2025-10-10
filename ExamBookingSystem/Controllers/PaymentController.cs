@@ -302,6 +302,65 @@ namespace ExamBookingSystem.Controllers
                     _logger.LogInformation($"Payment status updated with PaymentIntentId: {session.PaymentIntentId}");
                 }
 
+                // Відправляємо email підтвердження оплати
+                try
+                {
+                    var emailBody = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                    <div style='max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'>
+                        <h2 style='color: #28a745; text-align: center;'>Payment Successful!</h2>
+                        
+                        <p>Dear {bookingData.StudentFirstName} {bookingData.StudentLastName},</p>
+                        
+                        <p>Thank you for your payment. We have successfully received your booking request.</p>
+                        
+                        <div style='background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                            <h3 style='margin-top: 0;'>Booking Details:</h3>
+                            <p><strong>Booking ID:</strong> {bookingId}</p>
+                            <p><strong>Exam Type:</strong> {bookingData.CheckRideType}</p>
+                            <p><strong>Preferred Location:</strong> {bookingData.PreferredAirport}</p>
+                            <p><strong>Preferred Date:</strong> {bookingData.StartDate?.ToString("MMMM dd, yyyy") ?? "ASAP"}</p>
+                            <p><strong>Payment Amount:</strong> ${_settingsService.GetBookingFee()}.00</p>
+                        </div>
+                        
+                        <div style='background-color: #e7f3ff; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                            <h3 style='margin-top: 0; color: #0066cc;'>What Happens Next?</h3>
+                            <ol>
+                                <li>We are now searching for available examiners in your area</li>
+                                <li>We will contact qualified examiners within your specified radius ({bookingData.SearchRadius} nautical miles)</li>
+                                <li>You will receive an email once an examiner accepts your booking</li>
+                                <li>The examiner will contact you directly to finalize scheduling details</li>
+                            </ol>
+                        </div>
+                        
+                        <p style='color: #666; font-size: 14px;'>
+                            If you have any questions, please don't hesitate to contact us. We typically match students with examiners within 24-48 hours.
+                        </p>
+                        
+                        <hr style='border: none; border-top: 1px solid #ddd; margin: 20px 0;'>
+                        
+                        <p style='color: #999; font-size: 12px; text-align: center;'>
+                            This is an automated confirmation email. Please do not reply to this message.
+                        </p>
+                    </div>
+                </body>
+                </html>";
+
+                    await _emailService.SendEmailAsync(
+                        bookingData.StudentEmail,
+                        $"Payment Confirmed - Booking {bookingId}",
+                        emailBody
+                    );
+
+                    _logger.LogInformation($"Payment confirmation email sent to {bookingData.StudentEmail}");
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError(emailEx, "Failed to send payment confirmation email");
+                    // Не блокуємо процес через помилку email
+                }
+
                 // Геокодуємо адресу
                 var coordinates = await _locationService.GeocodeAddressAsync(bookingData.PreferredAirport);
                 if (!coordinates.HasValue)
@@ -310,7 +369,6 @@ namespace ExamBookingSystem.Controllers
                     await _slackService.NotifyErrorAsync("Geocoding failed", $"Could not geocode {bookingData.PreferredAirport}");
                     return;
                 }
-
                 _logger.LogInformation($"Geocoded to ({coordinates.Value.Latitude}, {coordinates.Value.Longitude})");
 
                 // Знаходимо екзаменаторів
@@ -341,12 +399,10 @@ namespace ExamBookingSystem.Controllers
                 // Контактуємо з екзаменаторами
                 var maxExaminers = _configuration.GetValue("ApplicationSettings:MaxExaminersToContact", 3);
                 var examinersToContact = nearbyExaminers.Take(maxExaminers).ToList();
-
                 _logger.LogInformation($"Contacting {examinersToContact.Count} examiners");
 
                 var contactTasks = examinersToContact.Select(examiner =>
                     ContactExaminerAsync(examiner, bookingData, bookingId));
-
                 await Task.WhenAll(contactTasks);
 
                 _logger.LogInformation($"✅ Successfully processed payment and created booking {bookingId}");
@@ -358,6 +414,46 @@ namespace ExamBookingSystem.Controllers
             }
         }
 
+        private string? NormalizeExamType(string? examType)
+        {
+            if (string.IsNullOrWhiteSpace(examType))
+                return null;
+
+            var normalized = examType.Trim();
+
+            // Маппінг повних назв на скорочені
+            if (normalized.Contains("Private", StringComparison.OrdinalIgnoreCase))
+                return "Private";
+
+            if (normalized.Contains("Instrument", StringComparison.OrdinalIgnoreCase))
+                return "Instrument";
+
+            if (normalized.Contains("Commercial", StringComparison.OrdinalIgnoreCase))
+                return "Commercial";
+
+            if (normalized.Contains("CFI", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Contains("Flight Instructor", StringComparison.OrdinalIgnoreCase))
+                return "CFI";
+
+            if (normalized.Contains("CFII", StringComparison.OrdinalIgnoreCase))
+                return "CFII";
+
+            if (normalized.Contains("MEI", StringComparison.OrdinalIgnoreCase))
+                return "MEI";
+
+            if (normalized.Contains("ATP", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Contains("Airline Transport", StringComparison.OrdinalIgnoreCase))
+                return "ATP";
+
+            if (normalized.Contains("Multi", StringComparison.OrdinalIgnoreCase))
+                return "MultiEngine";
+
+            if (normalized.Contains("Sport", StringComparison.OrdinalIgnoreCase))
+                return "SportPilot";
+
+            _logger.LogWarning($"Could not normalize exam type: '{examType}'");
+            return normalized;
+        }
         private async Task CreateMinimalBooking(Session session)
         {
             try
