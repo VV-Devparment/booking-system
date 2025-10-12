@@ -240,62 +240,85 @@ namespace ExamBookingSystem.Services
             <div style='background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 5px; margin-bottom: 20px;'>
                 <strong>⚠️ IMPORTANT:</strong> Do not reply to this email. Contact your examiner directly using the information below.
             </div>
-                    
-                    <div style='padding: 20px; background: #f8f9fa; border: 1px solid #dee2e6; border-top: none;'>
-                        <p>Hello <strong>{studentName}</strong>,</p>
-                        
-                        <p>Great news! Your exam has been successfully scheduled.</p>
-                        
-                        <div style='background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;'>
-                            <h3 style='margin-top: 0; color: #28a745;'>📋 Exam Details</h3>
-                            <table style='width: 100%;'>
-                                <tr>
-                                    <td style='padding: 8px 0;'><strong>👨‍🏫 Examiner:</strong></td>
-                                    <td>{examinerName}</td>
-                                </tr>
-                                <tr>
-                                    <td style='padding: 8px 0;'><strong>📅 Date:</strong></td>
-                                    <td>{scheduledDate:dddd, MMMM dd, yyyy}</td>
-                                </tr>
-                                <tr>
-                                    <td style='padding: 8px 0;'><strong>⏰ Time:</strong></td>
-                                    <td>{scheduledDate:HH:mm}</td>
-                                </tr>
-                            </table>
-                        </div>
-                        
-                        <div style='background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin: 20px 0;'>
-                            <p style='margin: 0; color: #155724;'>
-                                📧 You will receive a calendar invitation shortly with all the details.
-                            </p>
-                        </div>
-                        
-                        <div style='background: #f0f0f0; padding: 15px; border-radius: 8px; margin: 20px 0;'>
-                            <h4 style='margin-top: 0;'>📝 Important Reminders:</h4>
-<ul style='margin: 0; padding-left: 20px;'>
-    <li>Bring logbook, aircraft documents, medical certificate and any other required paperwork</li>
-    <li>Complete your IACRA ASAP (within 72 hours of test) to avoid cancellation of check</li>
-    <li>Payment will be processed at the beginning of the test</li>
-    <li>Arrive at least 15 minutes early</li>
-    <li>The examiner will contact you with any questions related to case of events/flight planning</li>
-</ul>>
-                        </div>
-                        
-                        <p>If you need to reschedule or have any questions, please contact us as soon as possible.</p>
-                        
-                        <p>Good luck with your exam!</p>
-                        
-                        <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 12px;'>
-    <p>Best regards,<br>
-    JUMPSEAT Team<br><br>
-    This is an automated message. Do not reply to this email.</p>
-</div>
-                    </div>
-                </div>";
+            
+            <p>Hello <strong>{studentName}</strong>,</p>
+            
+            <p>Great news! Your exam has been successfully scheduled.</p>
+            
+            <div style='background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;'>
+                <h3 style='margin-top: 0; color: #28a745;'>📋 Exam Details</h3>
+                <table style='width: 100%;'>
+                    <tr>
+                        <td style='padding: 8px 0;'><strong>👨‍🏫 Examiner:</strong></td>
+                        <td>{examinerName}</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 8px 0;'><strong>📧 Examiner Email:</strong></td>
+                        <td><a href='mailto:{examinerEmail}' style='color: #5CADD3;'>{examinerEmail ?? "Not provided"}</a></td>
+                    </tr>
+                    {(!string.IsNullOrEmpty(examinerPhone) ? $@"
+                    <tr>
+                        <td style='padding: 8px 0;'><strong>📱 Examiner Phone:</strong></td>
+                        <td><a href='tel:{examinerPhone}' style='color: #5CADD3;'>{examinerPhone}</a></td>
+                    </tr>" : "")}
+                    <tr>
+                        <td style='padding: 8px 0;'><strong>📅 Date:</strong></td>
+                        <td>{scheduledDate:dddd, MMMM dd, yyyy}</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 8px 0;'><strong>⏰ Time:</strong></td>
+                        <td>{scheduledDate:HH:mm}</td>
+                    </tr>
+                    {(!string.IsNullOrEmpty(venueDetails) ? $@"
+                    <tr>
+                        <td style='padding: 8px 0;'><strong>📍 Venue:</strong></td>
+                        <td>{venueDetails}</td>
+                    </tr>" : "")}
+                    {(price.HasValue && price > 0 ? $@"
+                    <tr>
+                        <td style='padding: 8px 0;'><strong>💰 Exam Fee:</strong></td>
+                        <td>${price:F2}</td>
+                    </tr>" : "")}
+                    {(!string.IsNullOrEmpty(examinerMessage) ? $@"
+                    <tr>
+                        <td style='padding: 8px 0;' valign='top'><strong>💬 Message from Examiner:</strong></td>
+                        <td>{examinerMessage}</td>
+                    </tr>" : "")}
+                </table>
+            </div>
+            
+            <div style='background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                <p style='margin: 0; color: #155724;'>
+                    📧 You will receive a calendar invitation shortly with all the details.
+                </p>
+            </div>
+            
+            <div style='background: #f0f0f0; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                <h4 style='margin-top: 0;'>📝 Important Reminders:</h4>
+                <ul style='margin: 0; padding-left: 20px;'>
+                    <li>Bring logbook, aircraft documents, medical certificate and any other required paperwork</li>
+                    <li>Complete your IACRA ASAP (within 72 hours of test) to avoid cancellation of check</li>
+                    <li>Payment will be processed at the beginning of the test</li>
+                    <li>Arrive at least 15 minutes early</li>
+                    <li>The examiner will contact you with any questions related to case of events/flight planning</li>
+                </ul>
+            </div>
+            
+            <p>If you need to reschedule or have any questions, please contact us as soon as possible.</p>
+            
+            <p>Good luck with your exam!</p>
+            
+            <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 12px;'>
+                <p>Best regards,<br>
+                JUMPSEAT Team<br><br>
+                This is an automated message. Do not reply to this email.</p>
+            </div>
+        </div>
+    </div>";
 
             _logger.LogInformation($"📤 Sending confirmation email to {studentName} ({studentEmail})");
             var result = await SendEmailAsync(studentEmail, subject, body, "JUMPSEAT");
-            
+
             if (result)
             {
                 _logger.LogInformation($"✅ Student confirmation email sent successfully");
@@ -304,7 +327,7 @@ namespace ExamBookingSystem.Services
             {
                 _logger.LogWarning($"❌ Failed to send student confirmation email");
             }
-            
+
             return result;
         }
 
