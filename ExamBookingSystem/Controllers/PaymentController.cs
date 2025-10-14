@@ -311,8 +311,9 @@ namespace ExamBookingSystem.Controllers
     <div style='max-width: 600px; margin: 0 auto; background-color: white;'>
         <!-- Header -->
         <div style='background: linear-gradient(135deg, #5CADD3 0%, #2c3e50 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;'>
+            <img src='https://yourdomain.com/jumpseat-logo.png' alt='JUMPSEAT' style='height: 50px; margin-bottom: 10px;'>
             <h1 style='color: white; margin: 0; font-size: 32px; font-weight: 600;'>JUMPSEAT</h1>
-            <p style='color: white; margin: 10px 0 0 0; font-size: 16px; opacity: 0.95;'>Your Path to Aviation Excellence</p>
+            <p style='color: white; margin: 10px 0 0 0; font-size: 16px; opacity: 0.95;'>One Flight Away</p>
         </div>
         
         <!-- Success Banner -->
@@ -329,7 +330,7 @@ namespace ExamBookingSystem.Controllers
             </p>
             
             <p style='font-size: 15px; color: #555; line-height: 1.6;'>
-                Thank you for choosing JUMPSEAT for your examination needs. We've successfully received your payment and your booking request is now being processed.
+                Thank you for choosing JUMPSEAT! We've successfully received your payment and your booking request is now being processed.
             </p>
             
             <!-- Booking Details Card -->
@@ -370,7 +371,7 @@ namespace ExamBookingSystem.Controllers
                 </ol>
                 <div style='background: white; padding: 12px; margin-top: 15px; border-radius: 5px; border-left: 3px solid #0066cc;'>
                     <p style='margin: 0; color: #0066cc; font-size: 14px;'>
-                        <strong>⏱️ Expected Timeline:</strong> Most students are matched within 24-48 hours
+                        <strong>⏱️ Expected Timeline:</strong> Most students are matched within 48-72 hours
                     </p>
                 </div>
             </div>
@@ -388,7 +389,7 @@ namespace ExamBookingSystem.Controllers
                 <p style='margin: 0 0 10px 0; color: #666; font-size: 14px;'>Need assistance?</p>
                 <p style='margin: 0; color: #333; font-size: 16px;'>
                     Our support team is here to help<br>
-                    <a href='mailto:support@jumpseat.com' style='color: #5CADD3; text-decoration: none; font-weight: bold;'>support@jumpseat.com</a>
+                    <a href='mailto:main@jumpseat.us' style='color: #5CADD3; text-decoration: none; font-weight: bold;'>main@jumpseat.us</a>
                 </p>
             </div>
         </div>
@@ -403,7 +404,7 @@ namespace ExamBookingSystem.Controllers
             </p>
             <div style='margin-top: 20px; padding-top: 20px; border-top: 1px solid #34495e;'>
                 <p style='color: #7f8c8d; margin: 0; font-size: 11px;'>
-                    © 2024 JUMPSEAT. All rights reserved.
+                    © 2025 JUMPSEAT. All rights reserved.
                 </p>
             </div>
         </div>
