@@ -87,7 +87,8 @@ namespace ExamBookingSystem.Controllers
                 {"studentEmail", TruncateString(bookingData.StudentEmail, 200)},
                 {"studentPhone", TruncateString(bookingData.StudentPhone, 50)},
                 {"checkRideType", TruncateString(bookingData.CheckRideType, 50)},
-                {"preferredAirport", TruncateString(bookingData.PreferredAirport, 100)}
+                {"preferredAirport", TruncateString(bookingData.PreferredAirport, 100)},
+                {"aircraftType", TruncateString(bookingData.AircraftType, 100)}
             };
 
                 _logger.LogInformation($"Created temp booking ID: {tempBookingId}");
@@ -236,7 +237,7 @@ namespace ExamBookingSystem.Controllers
                                 StudentPhone = fullSession.Metadata.GetValueOrDefault("studentPhone", ""),
                                 CheckRideType = fullSession.Metadata.GetValueOrDefault("checkRideType", "Private"),
                                 PreferredAirport = fullSession.Metadata.GetValueOrDefault("preferredAirport", ""),
-                                AircraftType = "Cessna 172", // Default
+                                AircraftType = fullSession.Metadata.GetValueOrDefault("aircraftType", "N/A"),
                                 SearchRadius = 50,
                                 WillingToFly = true,
                                 DateOption = "ASAP",
@@ -247,6 +248,7 @@ namespace ExamBookingSystem.Controllers
 
                             // Логування для перевірки
                             _logger.LogInformation($"Phone from metadata: '{bookingData.StudentPhone}'");
+                            _logger.LogInformation($"Recreated booking with Aircraft Type: '{bookingData.AircraftType}'");
                         }
 
                         if (bookingData != null)
