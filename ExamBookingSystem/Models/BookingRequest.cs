@@ -39,6 +39,9 @@ namespace ExamBookingSystem.Models
         [Required]
         public string StudentAddress { get; set; } = string.Empty;
 
+        [StringLength(100)]
+        public string? AircraftType { get; set; }
+
         // Geolocation для пошуку екзаменаторів
         public double Latitude { get; set; }
         public double Longitude { get; set; }

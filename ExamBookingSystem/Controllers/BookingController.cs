@@ -1026,27 +1026,25 @@ namespace ExamBookingSystem.Controllers
                     }
                 }
 
-                var totalCount = await query.CountAsync();
-                _logger.LogInformation($"Total bookings after all filters: {totalCount}");
-
                 var bookings = await query
-                    .OrderBy(b => b.PreferredDate)
-                    .Take(20)
-                   .Select(b => new
-                   {
-                       BookingId = $"BK{b.Id:D6}",
-                       StudentName = $"{b.StudentFirstName} {b.StudentLastName}",
-                       ExamType = b.ExamType,
-                       Location = b.StudentAddress,
-                       PreferredDate = b.PreferredDate,
-                       StartDate = b.StartDate,
-                       EndDate = b.EndDate,
-                       WillingToTravel = b.WillingToTravel,
-                       SpecialRequirements = b.SpecialRequirements,
-                       CreatedAt = b.CreatedAt,
-                       DaysWaiting = (int)(DateTime.UtcNow - b.CreatedAt).TotalDays
-                   })
-                    .ToListAsync();
+    .OrderBy(b => b.PreferredDate)
+    .Take(20)
+    .Select(b => new
+    {
+        BookingId = $"BK{b.Id:D6}",
+        StudentName = $"{b.StudentFirstName} {b.StudentLastName}",
+        ExamType = b.ExamType,
+        AircraftType = b.AircraftType,  // ← ЦЕ ВЖЕ ПРАЦЮВАТИМЕ
+        Location = b.StudentAddress,
+        PreferredDate = b.PreferredDate,
+        StartDate = b.StartDate,
+        EndDate = b.EndDate,
+        WillingToTravel = b.WillingToTravel,
+        SpecialRequirements = b.SpecialRequirements,
+        CreatedAt = b.CreatedAt,
+        DaysWaiting = (int)(DateTime.UtcNow - b.CreatedAt).TotalDays
+    })
+    .ToListAsync();
 
                 _logger.LogInformation($"Returning {bookings.Count} bookings");
 

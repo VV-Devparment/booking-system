@@ -432,7 +432,9 @@ async function loadActiveBookings() {
                 return;
             }
 
-            let html = '<div class="table-responsive"><table class="table table-striped">';
+            // ОНОВЛЕНО: додано wrapper для прокрутки
+            let html = '<div class="table-scroll-wrapper">';
+            html += '<table class="table table-striped">';
             html += '<thead><tr><th>Booking ID</th><th>Student</th><th>Email</th><th>Exam Type</th><th>Status</th><th>Paid</th><th>Created</th></tr></thead><tbody>';
 
             bookings.forEach(booking => {
@@ -458,6 +460,8 @@ async function loadActiveBookings() {
             });
 
             html += '</tbody></table></div>';
+            // ДОДАНО: підказка для мобільних
+            html += '<div class="scroll-hint"><i class="bi bi-arrow-left-right"></i> Scroll horizontally to see all columns</div>';
             listDiv.innerHTML = html;
         } else {
             listDiv.innerHTML = '<div class="alert alert-danger">Failed to load bookings</div>';
@@ -466,6 +470,7 @@ async function loadActiveBookings() {
         listDiv.innerHTML = '<div class="alert alert-danger">Network error</div>';
     }
 }
+
 
 async function loadFilteredBookings() {
     // Перевірка автентифікації
@@ -497,8 +502,10 @@ async function loadFilteredBookings() {
                 return;
             }
 
-            let html = '<div class="table-responsive"><table class="table table-hover">';
-            html += '<thead><tr><th>Booking ID</th><th>Student</th><th>Exam Type</th><th>Location</th><th>Preferred Date</th><th>Action</th></tr></thead><tbody>';
+            // ОНОВЛЕНО: додано колонку Aircraft Type
+            let html = '<div class="table-scroll-wrapper">';
+            html += '<table class="table table-hover">';
+            html += '<thead><tr><th>Booking ID</th><th>Student</th><th>Exam Type</th><th>Aircraft</th><th>Location</th><th>Preferred Date</th><th>Action</th></tr></thead><tbody>';
 
             bookings.forEach(booking => {
                 html += `
@@ -506,6 +513,7 @@ async function loadFilteredBookings() {
                         <td><code>${booking.bookingId}</code></td>
                         <td>${booking.studentName}</td>
                         <td><span class="badge bg-info">${booking.examType}</span></td>
+                        <td><strong>${booking.aircraftType || 'N/A'}</strong></td>
                         <td>${booking.location}</td>
                         <td>${new Date(booking.preferredDate).toLocaleDateString()}</td>
                         <td>
@@ -518,6 +526,7 @@ async function loadFilteredBookings() {
             });
 
             html += '</tbody></table></div>';
+            html += '<div class="scroll-hint"><i class="bi bi-arrow-left-right"></i> Scroll horizontally to see all columns</div>';
             listDiv.innerHTML = html;
         }
     } catch (error) {

@@ -54,6 +54,7 @@ namespace ExamBookingSystem.Services
                     StudentEmail = request.StudentEmail,
                     StudentPhone = request.StudentPhone,
                     StudentAddress = request.PreferredAirport,
+                    AircraftType = request.AircraftType,  // ← ДОДАЙТЕ ЦЕЙ РЯДОК
                     ExamType = request.CheckRideType,
                     PreferredDate = DateTime.SpecifyKind(request.StartDate ?? DateTime.Now.AddDays(7), DateTimeKind.Unspecified),
                     PreferredTime = "10:00",
