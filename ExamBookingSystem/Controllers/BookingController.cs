@@ -947,46 +947,51 @@ namespace ExamBookingSystem.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
-		
+
         [HttpGet("available-for-examiner")]
         public async Task<ActionResult> GetAvailableBookingsForExaminer(
-       [FromQuery] string? examinerEmail = null,
-       [FromQuery] string? examType = null,
-       [FromQuery] string? state = null,
-       [FromQuery] DateTime? dateFrom = null,
-       [FromQuery] DateTime? dateTo = null)
+    [FromQuery] string? examinerEmail = null,
+    [FromQuery] string? examType = null,
+    [FromQuery] string? state = null,
+    [FromQuery] DateTime? dateFrom = null,
+    [FromQuery] DateTime? dateTo = null)
         {
             try
             {
-                _logger.LogInformation($"Filtering bookings: examinerEmail={examinerEmail}, examType={examType}, state={state}, dateFrom={dateFrom}");
+                _logger.LogInformation($"=== FILTERING BOOKINGS ===");
+                _logger.LogInformation($"examinerEmail={examinerEmail}, examType={examType}, state={state}, dateFrom={dateFrom}");
 
+                // Початковий query - тільки доступні букінги БЕЗ призначеного екзаменатора
                 var query = _context.BookingRequests
+                    .Where(b => b.AssignedExaminerId == null)
                     .Where(b => b.Status == Models.BookingStatus.ExaminersContacted ||
-                               b.Status == Models.BookingStatus.PaymentConfirmed)
-                    .Where(b => b.AssignedExaminerId == null);
+                               b.Status == Models.BookingStatus.PaymentConfirmed);
 
-                // Filter by exam type
+                _logger.LogInformation($"Initial query: bookings without assigned examiner");
+
+                // Фільтр по exam type
                 if (!string.IsNullOrEmpty(examType))
                 {
                     query = query.Where(b => b.ExamType.Contains(examType));
                     _logger.LogInformation($"Applied exam type filter: {examType}");
                 }
 
-                // Filter by state (from address) - ВИПРАВЛЕНО
+                // Фільтр по state (з StudentAddress)
                 if (!string.IsNullOrEmpty(state))
                 {
-                    var upperState = state.ToUpper();
+                    var upperState = state.ToUpper().Trim();
                     query = query.Where(b => b.StudentAddress.ToUpper().Contains(upperState));
                     _logger.LogInformation($"Applied state filter: {state}");
                 }
 
-                // Filter by date range - ВИПРАВЛЕНО
+                // Фільтр по даті
                 if (dateFrom.HasValue)
                 {
                     var dateFromUnspecified = DateTime.SpecifyKind(dateFrom.Value.Date, DateTimeKind.Unspecified);
                     query = query.Where(b => b.PreferredDate >= dateFromUnspecified);
                     _logger.LogInformation($"Applied date from filter: {dateFrom}");
                 }
+
                 if (dateTo.HasValue)
                 {
                     var dateToUnspecified = DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Unspecified);
@@ -994,57 +999,56 @@ namespace ExamBookingSystem.Controllers
                     _logger.LogInformation($"Applied date to filter: {dateTo}");
                 }
 
-                // Examiner email filter - ГОЛОВНЕ ВИПРАВЛЕННЯ
+                // ГОЛОВНЕ: Фільтр по examiner - НЕ ПОКАЗУВАТИ букінги на які він вже відповідав
                 if (!string.IsNullOrEmpty(examinerEmail))
                 {
                     var examiner = await _context.Examiners
                         .FirstOrDefaultAsync(e => e.Email.ToLower() == examinerEmail.ToLower());
 
-                    _logger.LogInformation($"Looking for examiner with email: {examinerEmail}");
-
                     if (examiner != null)
                     {
                         _logger.LogInformation($"Found examiner: {examiner.Name} (ID: {examiner.Id})");
 
+                        // Отримуємо ID букінгів на які цей екзаменатор вже відповідав
                         var respondedBookingIds = await _context.ExaminerResponses
                             .Where(r => r.ExaminerId == examiner.Id)
                             .Select(r => r.BookingRequestId)
                             .ToListAsync();
 
-                        _logger.LogInformation($"Examiner {examiner.Name} responded to {respondedBookingIds.Count} bookings: [{string.Join(", ", respondedBookingIds)}]");
+                        _logger.LogInformation($"Examiner responded to {respondedBookingIds.Count} bookings: [{string.Join(", ", respondedBookingIds)}]");
 
                         if (respondedBookingIds.Any())
                         {
                             query = query.Where(b => !respondedBookingIds.Contains(b.Id));
-                            _logger.LogInformation($"Filtered out {respondedBookingIds.Count} bookings examiner already responded to");
+                            _logger.LogInformation($"Filtered out {respondedBookingIds.Count} bookings");
                         }
                     }
                     else
                     {
                         _logger.LogWarning($"No examiner found with email: {examinerEmail}");
-                        // Якщо екзаменатора не знайдено, показуємо всі доступні букінги
                     }
                 }
 
+                // Виконуємо запит і повертаємо результат
                 var bookings = await query
-    .OrderBy(b => b.PreferredDate)
-    .Take(20)
-    .Select(b => new
-    {
-        BookingId = $"BK{b.Id:D6}",
-        StudentName = $"{b.StudentFirstName} {b.StudentLastName}",
-        ExamType = b.ExamType,
-        AircraftType = b.AircraftType,  // ← ЦЕ ВЖЕ ПРАЦЮВАТИМЕ
-        Location = b.StudentAddress,
-        PreferredDate = b.PreferredDate,
-        StartDate = b.StartDate,
-        EndDate = b.EndDate,
-        WillingToTravel = b.WillingToTravel,
-        SpecialRequirements = b.SpecialRequirements,
-        CreatedAt = b.CreatedAt,
-        DaysWaiting = (int)(DateTime.UtcNow - b.CreatedAt).TotalDays
-    })
-    .ToListAsync();
+                    .OrderBy(b => b.PreferredDate)
+                    .Take(50)
+                    .Select(b => new
+                    {
+                        BookingId = $"BK{b.Id:D6}",
+                        StudentName = $"{b.StudentFirstName} {b.StudentLastName}",
+                        ExamType = b.ExamType,
+                        AircraftType = b.AircraftType ?? "N/A",
+                        Location = b.StudentAddress,
+                        PreferredDate = b.PreferredDate,
+                        StartDate = b.StartDate,
+                        EndDate = b.EndDate,
+                        WillingToTravel = b.WillingToTravel,
+                        SpecialRequirements = b.SpecialRequirements,
+                        CreatedAt = b.CreatedAt,
+                        DaysWaiting = (int)(DateTime.UtcNow - b.CreatedAt).TotalDays
+                    })
+                    .ToListAsync();
 
                 _logger.LogInformation($"Returning {bookings.Count} bookings");
 
@@ -1053,7 +1057,7 @@ namespace ExamBookingSystem.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting available bookings for examiner");
-                return StatusCode(500, "Failed to retrieve available bookings");
+                return StatusCode(500, new { error = "Failed to retrieve available bookings", message = ex.Message });
             }
         }
 

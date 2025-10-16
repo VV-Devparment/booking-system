@@ -486,40 +486,80 @@ async function loadFilteredBookings() {
         return;
     }
 
+    // Збираємо всі фільтри
+    const examType = document.getElementById('examTypeFilter').value;
+    const state = document.getElementById('stateFilter').value;
+    const dateFrom = document.getElementById('dateFromFilter').value;
+
+    // Формуємо параметри запиту
     const params = new URLSearchParams();
     params.append('examinerEmail', email);
+
+    if (examType) {
+        params.append('examType', examType);
+    }
+
+    if (state) {
+        params.append('state', state);
+    }
+
+    if (dateFrom) {
+        params.append('dateFrom', dateFrom);
+    }
 
     const listDiv = document.getElementById('availableBookingsList');
     listDiv.innerHTML = '<div class="spinner-border"></div> Loading...';
 
+    console.log('=== FILTERING BOOKINGS ===');
+    console.log('Email:', email);
+    console.log('Exam Type:', examType);
+    console.log('State:', state);
+    console.log('Date From:', dateFrom);
+    console.log('Request URL:', `${API_BASE}/Booking/available-for-examiner?${params}`);
+
     try {
         const response = await fetch(`${API_BASE}/Booking/available-for-examiner?${params}`);
+
+        console.log('Response status:', response.status);
+
         if (response.ok) {
             const bookings = await response.json();
 
+            console.log('Bookings received:', bookings.length);
+            console.log('Bookings:', bookings);
+
             if (bookings.length === 0) {
-                listDiv.innerHTML = '<p class="text-muted">No available bookings match your criteria</p>';
+                listDiv.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        No available bookings match your criteria.
+                        <br><small>Try adjusting the filters or check back later.</small>
+                    </div>`;
                 return;
             }
 
-            // ОНОВЛЕНО: додано колонку Aircraft Type
             let html = '<div class="table-scroll-wrapper">';
             html += '<table class="table table-hover">';
-            html += '<thead><tr><th>Booking ID</th><th>Student</th><th>Exam Type</th><th>Aircraft</th><th>Location</th><th>Preferred Date</th><th>Action</th></tr></thead><tbody>';
+            html += '<thead><tr><th>Booking ID</th><th>Student</th><th>Exam Type</th><th>Aircraft</th><th>Location</th><th>Preferred Date</th><th>Days Waiting</th><th>Action</th></tr></thead><tbody>';
 
             bookings.forEach(booking => {
+                const preferredDate = new Date(booking.preferredDate).toLocaleDateString();
+                const daysWaiting = booking.daysWaiting || 0;
+                const waitingBadge = daysWaiting > 7 ? 'bg-danger' : (daysWaiting > 3 ? 'bg-warning' : 'bg-success');
+
                 html += `
                     <tr>
                         <td><code>${booking.bookingId}</code></td>
                         <td>${booking.studentName}</td>
                         <td><span class="badge bg-info">${booking.examType}</span></td>
-                        <td><strong>${booking.aircraftType || 'N/A'}</strong></td>
+                        <td><strong>${booking.aircraftType}</strong></td>
                         <td>${booking.location}</td>
-                        <td>${new Date(booking.preferredDate).toLocaleDateString()}</td>
+                        <td>${preferredDate}</td>
+                        <td><span class="badge ${waitingBadge}">${daysWaiting} days</span></td>
                         <td>
                             <button class="btn btn-sm btn-success" 
                                 onclick="fillResponseForm('${booking.bookingId}', '${booking.studentName.replace(/'/g, "\\'")}')">
-                                Respond
+                                <i class="bi bi-check-circle"></i> Respond
                             </button>
                         </td>
                     </tr>`;
@@ -527,10 +567,25 @@ async function loadFilteredBookings() {
 
             html += '</tbody></table></div>';
             html += '<div class="scroll-hint"><i class="bi bi-arrow-left-right"></i> Scroll horizontally to see all columns</div>';
+
             listDiv.innerHTML = html;
+        } else {
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
+            listDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    Failed to load bookings: ${response.status}
+                    <br><small>${errorText}</small>
+                </div>`;
         }
     } catch (error) {
-        listDiv.innerHTML = '<div class="alert alert-danger">Network error</div>';
+        console.error('Network error:', error);
+        listDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> 
+                Network error: ${error.message}
+            </div>`;
     }
 }
 
