@@ -726,35 +726,43 @@ namespace ExamBookingSystem.Controllers
                 var result = new List<object>();
                 foreach (var booking in bookings)
                 {
-                    // Отримуємо повну інформацію з БД
+                    var bookingData = new
+                    {
+                        booking.BookingId,
+                        booking.StudentName,
+                        booking.StudentEmail,
+                        StudentPhone = "",  // Значення за замовчуванням
+                        booking.ExamType,
+                        booking.Status,
+                        booking.IsPaid,
+                        booking.CreatedAt,
+                        booking.AssignedExaminerEmail,
+                        booking.AssignedExaminerName
+                    };
+
+                    // Спробуємо отримати телефон з БД
                     if (booking.BookingId.StartsWith("BK") && int.TryParse(booking.BookingId.Substring(2), out int id))
                     {
                         var dbBooking = await _context.BookingRequests.FindAsync(id);
                         if (dbBooking != null)
                         {
-                            result.Add(new
+                            bookingData = new
                             {
                                 booking.BookingId,
                                 booking.StudentName,
                                 booking.StudentEmail,
                                 StudentPhone = dbBooking.StudentPhone ?? "",
                                 booking.ExamType,
-                                AircraftType = dbBooking.AircraftType ?? "N/A",
-                                PreferredAirport = dbBooking.StudentAddress,
-                                WillingToFly = dbBooking.WillingToTravel,
-                                StartDate = dbBooking.StartDate,
-                                EndDate = dbBooking.EndDate,
-                                FtnNumber = dbBooking.FtnNumber ?? "",
-                                ExamId = dbBooking.ExamId ?? "",
-                                AdditionalNotes = dbBooking.SpecialRequirements ?? "",
                                 booking.Status,
                                 booking.IsPaid,
                                 booking.CreatedAt,
                                 booking.AssignedExaminerEmail,
                                 booking.AssignedExaminerName
-                            });
+                            };
                         }
                     }
+
+                    result.Add(bookingData);
                 }
 
                 return Ok(result);
@@ -762,6 +770,47 @@ namespace ExamBookingSystem.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving active bookings");
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        [HttpGet("{bookingId}/details")]
+        public async Task<ActionResult> GetBookingDetails(string bookingId)
+        {
+            try
+            {
+                if (!bookingId.StartsWith("BK") || !int.TryParse(bookingId.Substring(2), out int id))
+                    return BadRequest("Invalid booking ID format");
+
+                var dbBooking = await _context.BookingRequests.FindAsync(id);
+                if (dbBooking == null)
+                    return NotFound("Booking not found");
+
+                var result = new
+                {
+                    BookingId = bookingId,
+                    StudentName = $"{dbBooking.StudentFirstName} {dbBooking.StudentLastName}",
+                    StudentEmail = dbBooking.StudentEmail,
+                    StudentPhone = dbBooking.StudentPhone ?? "",
+                    ExamType = dbBooking.ExamType,
+                    AircraftType = dbBooking.AircraftType ?? "N/A",
+                    PreferredAirport = dbBooking.StudentAddress,
+                    WillingToFly = dbBooking.WillingToTravel,
+                    StartDate = dbBooking.StartDate,
+                    EndDate = dbBooking.EndDate,
+                    FtnNumber = dbBooking.FtnNumber ?? "",
+                    ExamId = dbBooking.ExamId ?? "",
+                    AdditionalNotes = dbBooking.SpecialRequirements ?? "",
+                    Status = dbBooking.Status,
+                    IsPaid = dbBooking.IsPaid,
+                    CreatedAt = dbBooking.CreatedAt
+                };
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error retrieving booking details for {bookingId}");
                 return StatusCode(500, "Internal server error");
             }
         }
