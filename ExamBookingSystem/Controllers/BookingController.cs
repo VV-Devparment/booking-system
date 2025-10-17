@@ -726,43 +726,35 @@ namespace ExamBookingSystem.Controllers
                 var result = new List<object>();
                 foreach (var booking in bookings)
                 {
-                    var bookingData = new
-                    {
-                        booking.BookingId,
-                        booking.StudentName,
-                        booking.StudentEmail,
-                        StudentPhone = "",  // Значення за замовчуванням
-                        booking.ExamType,
-                        booking.Status,
-                        booking.IsPaid,
-                        booking.CreatedAt,
-                        booking.AssignedExaminerEmail,
-                        booking.AssignedExaminerName
-                    };
-
-                    // Спробуємо отримати телефон з БД
+                    // Отримуємо повну інформацію з БД
                     if (booking.BookingId.StartsWith("BK") && int.TryParse(booking.BookingId.Substring(2), out int id))
                     {
                         var dbBooking = await _context.BookingRequests.FindAsync(id);
                         if (dbBooking != null)
                         {
-                            bookingData = new
+                            result.Add(new
                             {
                                 booking.BookingId,
                                 booking.StudentName,
                                 booking.StudentEmail,
                                 StudentPhone = dbBooking.StudentPhone ?? "",
                                 booking.ExamType,
+                                AircraftType = dbBooking.AircraftType ?? "N/A",
+                                PreferredAirport = dbBooking.StudentAddress,
+                                WillingToFly = dbBooking.WillingToTravel,
+                                StartDate = dbBooking.StartDate,
+                                EndDate = dbBooking.EndDate,
+                                FtnNumber = dbBooking.FtnNumber ?? "",
+                                ExamId = dbBooking.ExamId ?? "",
+                                AdditionalNotes = dbBooking.SpecialRequirements ?? "",
                                 booking.Status,
                                 booking.IsPaid,
                                 booking.CreatedAt,
                                 booking.AssignedExaminerEmail,
                                 booking.AssignedExaminerName
-                            };
+                            });
                         }
                     }
-
-                    result.Add(bookingData);
                 }
 
                 return Ok(result);

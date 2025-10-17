@@ -411,7 +411,6 @@ document.getElementById('examinerResponseForm').addEventListener('submit', async
 
 // ============== HELPER FUNCTIONS ==============
 async function loadActiveBookings() {
-    // Перевірка автентифікації
     if (!currentExaminer) {
         alert('Please login as examiner first');
         showExaminerLogin();
@@ -432,36 +431,47 @@ async function loadActiveBookings() {
                 return;
             }
 
-            // ОНОВЛЕНО: додано wrapper для прокрутки
             let html = '<div class="table-scroll-wrapper">';
-            html += '<table class="table table-striped">';
-            html += '<thead><tr><th>Booking ID</th><th>Student</th><th>Email</th><th>Exam Type</th><th>Status</th><th>Paid</th><th>Created</th></tr></thead><tbody>';
+            html += '<table class="table table-striped table-hover">';
+            html += '<thead><tr><th>ID</th><th>Student</th><th>Exam Type</th><th>Aircraft</th><th>Status</th><th>Action</th></tr></thead><tbody>';
 
             bookings.forEach(booking => {
                 const statusBadge = getDetailedStatusBadge(booking.status, booking.assignedExaminerEmail, booking.assignedExaminerName);
-                const paidBadge = booking.isPaid ? '<span class="badge bg-success">Paid</span>' : '<span class="badge bg-warning">Pending</span>';
 
                 const bookingJson = JSON.stringify({
                     bookingId: booking.bookingId,
                     studentName: booking.studentName,
-                    studentEmail: booking.studentEmail
+                    studentEmail: booking.studentEmail,
+                    studentPhone: booking.studentPhone || '',
+                    examType: booking.examType,
+                    aircraftType: booking.aircraftType,
+                    preferredAirport: booking.preferredAirport,
+                    willingToFly: booking.willingToFly,
+                    startDate: booking.startDate,
+                    endDate: booking.endDate,
+                    ftnNumber: booking.ftnNumber,
+                    examId: booking.examId,
+                    additionalNotes: booking.additionalNotes,
+                    status: booking.status,
+                    isPaid: booking.isPaid
                 }).replace(/"/g, '&quot;');
 
                 html += `
                     <tr style="cursor: pointer;" onclick='fillExaminerForm(${bookingJson})'>
                         <td><code>${booking.bookingId}</code></td>
                         <td>${booking.studentName}</td>
-                        <td>${booking.studentEmail}</td>
-                        <td>${booking.examType}</td>
+                        <td><span class="badge bg-info">${booking.examType}</span></td>
+                        <td>${booking.aircraftType || 'N/A'}</td>
                         <td>${statusBadge}</td>
-                        <td>${paidBadge}</td>
-                        <td>${new Date(booking.createdAt).toLocaleString()}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); fillExaminerForm(${bookingJson})">
+                                <i class="bi bi-eye"></i> View Details
+                            </button>
+                        </td>
                     </tr>`;
             });
 
             html += '</tbody></table></div>';
-            // ДОДАНО: підказка для мобільних
-            html += '<div class="scroll-hint"><i class="bi bi-arrow-left-right"></i> Scroll horizontally to see all columns</div>';
             listDiv.innerHTML = html;
         } else {
             listDiv.innerHTML = '<div class="alert alert-danger">Failed to load bookings</div>';
@@ -600,10 +610,147 @@ function getDetailedStatusBadge(status, assignedExaminerEmail, assignedExaminerN
 }
 
 function fillExaminerForm(booking) {
+    // Заповнюємо основні поля
     document.getElementById('bookingId').value = booking.bookingId;
     document.getElementById('studentName').value = booking.studentName;
     document.getElementById('studentEmail').value = booking.studentEmail;
     document.getElementById('studentPhone').value = booking.studentPhone || '';
+
+    // Показуємо модальне вікно з деталями
+    showBookingDetails(booking);
+}
+
+function showBookingDetails(booking) {
+    const modalHtml = `
+    <div class="modal fade" id="bookingDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">📋 Booking Details - ${booking.bookingId}</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">Student Information</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Name:</strong></td>
+                                    <td>${booking.studentName}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Email:</strong></td>
+                                    <td>${booking.studentEmail}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Phone:</strong></td>
+                                    <td>${booking.studentPhone || 'Not provided'}</td>
+                                </tr>
+                                ${booking.ftnNumber ? `
+                                <tr>
+                                    <td><strong>FTN Number:</strong></td>
+                                    <td>${booking.ftnNumber}</td>
+                                </tr>` : ''}
+                                ${booking.examId ? `
+                                <tr>
+                                    <td><strong>Exam ID:</strong></td>
+                                    <td>${booking.examId}</td>
+                                </tr>` : ''}
+                            </table>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="text-primary">Exam Details</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Checkride Type:</strong></td>
+                                    <td>${booking.examType}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Aircraft Type:</strong></td>
+                                    <td>${booking.aircraftType || 'N/A'}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Preferred Airport:</strong></td>
+                                    <td>${booking.preferredAirport || 'N/A'}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Willing to Fly:</strong></td>
+                                    <td>${booking.willingToFly ? 'Yes' : 'No'}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6 class="text-primary">Availability</h6>
+                            <div class="alert alert-light">
+                                ${booking.startDate && booking.endDate ? `
+                                    <strong>Date Range:</strong> 
+                                    ${new Date(booking.startDate).toLocaleDateString()} - 
+                                    ${new Date(booking.endDate).toLocaleDateString()}
+                                ` : `
+                                    <strong>ASAP</strong> - Available for any date
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${booking.additionalNotes ? `
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6 class="text-primary">Additional Notes</h6>
+                            <div class="alert alert-secondary">
+                                ${booking.additionalNotes}
+                            </div>
+                        </div>
+                    </div>` : ''}
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="d-grid">
+                                <button class="btn btn-success" onclick="acceptBooking('${booking.bookingId}', '${booking.studentName}', '${booking.studentEmail}', '${booking.studentPhone}')">
+                                    <i class="bi bi-check-circle"></i> Accept This Booking
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+
+    // Видаляємо старий модал якщо існує
+    const oldModal = document.getElementById('bookingDetailsModal');
+    if (oldModal) {
+        oldModal.remove();
+    }
+
+    // Додаємо новий модал
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Показуємо модал
+    const modal = new bootstrap.Modal(document.getElementById('bookingDetailsModal'));
+    modal.show();
+}
+
+function acceptBooking(bookingId, studentName, studentEmail, studentPhone) {
+    // Закриваємо модал
+    const modal = bootstrap.Modal.getInstance(document.getElementById('bookingDetailsModal'));
+    if (modal) modal.hide();
+
+    // Заповнюємо форму відповіді
+    document.getElementById('bookingId').value = bookingId;
+    document.getElementById('studentName').value = studentName;
+    document.getElementById('studentEmail').value = studentEmail;
+    document.getElementById('studentPhone').value = studentPhone || '';
+
+    // Прокручуємо до форми
+    document.querySelector('.card-header.bg-gradient-info').scrollIntoView({ behavior: 'smooth' });
+
+    // Автоматично вибираємо "Accept"
+    document.getElementById('acceptResponse').checked = true;
 }
 
 function fillResponseForm(bookingId, studentName) {
@@ -667,3 +814,5 @@ window.fillExaminerForm = fillExaminerForm;
 window.createNewBooking = createNewBooking;
 window.retryBooking = retryBooking;
 window.toggleDateRange = toggleDateRange;
+window.showBookingDetails = showBookingDetails;
+window.acceptBooking = acceptBooking;
