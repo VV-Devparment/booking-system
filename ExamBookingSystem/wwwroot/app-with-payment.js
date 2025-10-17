@@ -653,13 +653,43 @@ function toggleDateRange() {
     }
 }
 
+// Додайте змінну для відстеження стану модалу
+let isModalOpen = false;
+
 async function showBookingDetailsModal(bookingId) {
+    // Якщо модал вже відкривається або відкритий - ігноруємо
+    if (isModalOpen) {
+        console.log('Modal already open, ignoring click');
+        return;
+    }
+
+    isModalOpen = true;
+
     try {
+        // Спочатку закриваємо і видаляємо всі існуючі модали
+        const existingModal = document.getElementById('bookingDetailsModal');
+        if (existingModal) {
+            const modalInstance = bootstrap.Modal.getInstance(existingModal);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+            existingModal.remove();
+        }
+
+        // Видаляємо всі backdrop'и (затемнення)
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+
+        // Прибираємо класи modal-open з body
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+
         // Отримуємо повні дані про букінг
         const response = await fetch(`${API_BASE}/Booking/${bookingId}/details`);
 
         if (!response.ok) {
             alert('Failed to load booking details');
+            isModalOpen = false;
             return;
         }
 
@@ -766,23 +796,62 @@ async function showBookingDetailsModal(bookingId) {
             </div>
         </div>`;
 
-        // Видаляємо старий модал якщо існує
-        const oldModal = document.getElementById('bookingDetailsModal');
-        if (oldModal) {
-            oldModal.remove();
-        }
-
         // Додаємо новий модал
         document.body.insertAdjacentHTML('beforeend', modalHtml);
 
+        // Отримуємо елемент модалу
+        const modalElement = document.getElementById('bookingDetailsModal');
+
         // Показуємо модал
-        const modal = new bootstrap.Modal(document.getElementById('bookingDetailsModal'));
+        const modal = new bootstrap.Modal(modalElement);
         modal.show();
+
+        // Коли модал закривається - скидаємо флаг і прибираємо елемент
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            isModalOpen = false;
+            modalElement.remove();
+
+            // Додаткове очищення backdrop'ів на всяк випадок
+            document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+        });
 
     } catch (error) {
         console.error('Error loading booking details:', error);
         alert('Failed to load booking details');
+        isModalOpen = false;
+
+        // Очищення при помилці
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
     }
+}
+
+function acceptBookingFromModal(bookingId, studentName, studentEmail, studentPhone) {
+    // Закриваємо модал
+    const modalElement = document.getElementById('bookingDetailsModal');
+    if (modalElement) {
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
+        }
+    }
+
+    // Заповнюємо форму відповіді
+    document.getElementById('bookingId').value = bookingId;
+    document.getElementById('studentName').value = studentName;
+    document.getElementById('studentEmail').value = studentEmail;
+    document.getElementById('studentPhone').value = studentPhone || '';
+
+    // Прокручуємо до форми
+    document.querySelector('.card-header.bg-gradient-info').scrollIntoView({ behavior: 'smooth' });
+
+    // Автоматично вибираємо "Accept"
+    document.getElementById('acceptResponse').checked = true;
 }
 
 function acceptBookingFromModal(bookingId, studentName, studentEmail, studentPhone) {
