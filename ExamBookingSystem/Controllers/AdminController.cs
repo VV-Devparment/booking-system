@@ -33,23 +33,6 @@ namespace ExamBookingSystem.Controllers
             {
                 _logger.LogInformation($"Login attempt for email: {dto.Email}");
 
-                // Спрощена перевірка для тестування
-                if (dto.Email == "admin@exambooking.com" && dto.Password == "Admin123!")
-                {
-                    var token = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
-
-                    return Ok(new
-                    {
-                        success = true,
-                        token = token,
-                        admin = new
-                        {
-                            email = "admin@exambooking.com",
-                            fullName = "System Administrator"
-                        }
-                    });
-                }
-
                 // Перевірка в БД
                 var admin = await _context.Administrators
                     .FirstOrDefaultAsync(a => a.Email == dto.Email && a.IsActive);
