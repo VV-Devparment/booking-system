@@ -157,7 +157,7 @@ namespace ExamBookingSystem.Controllers
                 _logger.LogInformation($"=== WEBHOOK BODY ===\n{json.Substring(0, Math.Min(json.Length, 500))}");
                 var webhookSecret = _configuration["Stripe:WebhookSecret"];
 
-                if (string.IsNullOrEmpty(webhookSecret) || webhookSecret == "whsec_f7a9a300fced78fe9f974b07afb42dd73a699a002e178ed33c442d13b8db77f9")
+                if (string.IsNullOrEmpty(webhookSecret) || webhookSecret == "whsec_6o8wlyznhe9EnDknNemO7WUl6q243js9")
                 {
                     _logger.LogWarning("⚠️ Webhook signature validation SKIPPED (test mode)");
                     stripeEvent = EventUtility.ParseEvent(json);
