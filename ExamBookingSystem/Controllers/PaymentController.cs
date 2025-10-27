@@ -171,8 +171,8 @@ namespace ExamBookingSystem.Controllers
                 _logger.LogInformation($"Event Type: {stripeEvent.Type}");
                 _logger.LogInformation($"Event ID: {stripeEvent.Id}");
 
-                // ✅ ВИПРАВЛЕНО: використовуємо повну назву
-                if (stripeEvent.Type == Stripe.Events.CheckoutSessionCompleted)
+                // ✅ ВИПРАВЛЕНО: використовуємо рядок замість константи (сумісність з версіями)
+                if (stripeEvent.Type == "checkout.session.completed")
                 {
                     var session = stripeEvent.Data.Object as Session;
                     _logger.LogInformation($"Checkout session completed: {session?.Id}");
