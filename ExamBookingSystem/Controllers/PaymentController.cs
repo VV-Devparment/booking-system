@@ -3,7 +3,6 @@ using ExamBookingSystem.Services;
 using Microsoft.AspNetCore.Mvc;
 using Stripe;
 using Stripe.Checkout;
-using System.Text.Json;
 
 namespace ExamBookingSystem.Controllers
 {
@@ -172,16 +171,17 @@ namespace ExamBookingSystem.Controllers
                 _logger.LogInformation($"Event Type: {stripeEvent.Type}");
                 _logger.LogInformation($"Event ID: {stripeEvent.Id}");
 
-                if (stripeEvent.Type == Events.CheckoutSessionCompleted)
+                // ✅ ВИПРАВЛЕНО: використовуємо повну назву
+                if (stripeEvent.Type == Stripe.Events.CheckoutSessionCompleted)
                 {
                     var session = stripeEvent.Data.Object as Session;
-                    _logger.LogInformation($"Checkout session completed: {session.Id}");
-                    _logger.LogInformation($"Payment Intent: {session.PaymentIntentId}");
-                    _logger.LogInformation($"Customer Email: {session.CustomerEmail}");
-                    _logger.LogInformation($"Payment Status: {session.PaymentStatus}");
-                    _logger.LogInformation($"Metadata count: {session.Metadata?.Count ?? 0}");
+                    _logger.LogInformation($"Checkout session completed: {session?.Id}");
+                    _logger.LogInformation($"Payment Intent: {session?.PaymentIntentId}");
+                    _logger.LogInformation($"Customer Email: {session?.CustomerEmail}");
+                    _logger.LogInformation($"Payment Status: {session?.PaymentStatus}");
+                    _logger.LogInformation($"Metadata count: {session?.Metadata?.Count ?? 0}");
 
-                    if (session.Metadata != null && session.Metadata.Count > 0)
+                    if (session?.Metadata != null && session.Metadata.Count > 0)
                     {
                         _logger.LogInformation("=== METADATA CONTENTS ===");
                         foreach (var kvp in session.Metadata)
@@ -191,7 +191,7 @@ namespace ExamBookingSystem.Controllers
                     }
 
                     // ✅ ВИПРАВЛЕННЯ: Шукаємо букінг в БД по bookingId з metadata
-                    if (session.Metadata != null && session.Metadata.TryGetValue("bookingId", out var bookingId))
+                    if (session?.Metadata != null && session.Metadata.TryGetValue("bookingId", out var bookingId))
                     {
                         _logger.LogInformation($"🔍 Found bookingId in metadata: {bookingId}");
 
@@ -274,27 +274,48 @@ namespace ExamBookingSystem.Controllers
                     return;
                 }
 
-                // Відправляємо email студенту
+                // ✅ ВИПРАВЛЕНО: Відправляємо email з правильними параметрами
+                // SendStudentConfirmationEmailAsync(studentEmail, studentName, examinerName, scheduledDate, ...)
                 await _emailService.SendStudentConfirmationEmailAsync(
                     booking.StudentEmail,
-                    $"{booking.StudentName}",
-                    bookingId);
+                    booking.StudentName,
+                    "TBD", // examinerName - буде призначено пізніше
+                    booking.PreferredDate, // scheduledDate
+                    null, // examinerEmail
+                    null, // examinerPhone
+                    null, // venueDetails
+                    "Your booking has been confirmed. An examiner will contact you soon.", // examinerMessage
+                    null  // price
+                );
 
                 _logger.LogInformation($"✅ Confirmation email sent to {booking.StudentEmail}");
 
                 // Отримуємо дані з metadata (якщо є додаткова інформація)
                 var preferredAirport = session.Metadata?.GetValueOrDefault("preferredAirport") ?? "Unknown";
-                var searchRadius = 50; // Default
-                var willingToFly = true; // Default
+                var searchRadius = 50.0; // Default radius in km
+
+                // ✅ ВИПРАВЛЕНО: Спочатку геокодуємо airport в координати
+                var coordinates = await _locationService.GeocodeAddressAsync(preferredAirport);
+                
+                if (coordinates == null)
+                {
+                    _logger.LogWarning($"Could not geocode airport: {preferredAirport}");
+                    await _slackService.NotifyNewBookingAsync(
+                        booking.StudentName,
+                        booking.ExamType,
+                        booking.PreferredDate);
+                    return;
+                }
 
                 // Шукаємо найближчих екзаменаторів
                 var nearbyExaminers = await _locationService.FindNearbyExaminersAsync(
-                    preferredAirport,
+                    coordinates.Value.Latitude,
+                    coordinates.Value.Longitude,
                     searchRadius,
-                    null, // examType
-                    willingToFly);
+                    booking.ExamType
+                );
 
-                _logger.LogInformation($"Found {nearbyExaminers.Count} examiners within {searchRadius} miles");
+                _logger.LogInformation($"Found {nearbyExaminers.Count} examiners within {searchRadius} km");
 
                 if (nearbyExaminers.Count == 0)
                 {
@@ -321,15 +342,16 @@ namespace ExamBookingSystem.Controllers
                 _logger.LogInformation($"Contacting {examinersToContact.Count} examiners");
 
                 // Створюємо CreateBookingDto для контакту з екзаменаторами
+                var studentNameParts = booking.StudentName.Split(' ', 2);
                 var bookingDto = new CreateBookingDto
                 {
-                    StudentFirstName = booking.StudentName.Split(' ')[0],
-                    StudentLastName = booking.StudentName.Contains(' ') ? booking.StudentName.Split(' ')[1] : "",
+                    StudentFirstName = studentNameParts.Length > 0 ? studentNameParts[0] : booking.StudentName,
+                    StudentLastName = studentNameParts.Length > 1 ? studentNameParts[1] : "",
                     StudentEmail = booking.StudentEmail,
                     CheckRideType = booking.ExamType,
                     PreferredAirport = preferredAirport,
                     StartDate = booking.PreferredDate,
-                    WillingToFly = willingToFly
+                    WillingToFly = true
                 };
 
                 var contactTasks = examinersToContact.Select(examiner =>
