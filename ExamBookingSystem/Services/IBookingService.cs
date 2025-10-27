@@ -1,4 +1,4 @@
-﻿using ExamBookingSystem.DTOs;
+using ExamBookingSystem.DTOs;
 
 namespace ExamBookingSystem.Services
 {
@@ -36,6 +36,9 @@ namespace ExamBookingSystem.Services
         Task<bool> IsBookingAvailableAsync(string bookingId);
         Task<List<BookingInfo>> GetActiveBookingsAsync();
         Task<bool> CancelBookingAsync(string bookingId, string reason);
-        Task<bool> UpdateBookingStatusAsync(string bookingId, BookingStatus status); // Новий метод
+        Task<bool> UpdateBookingStatusAsync(string bookingId, BookingStatus status);
+        
+        // ✅ ДОДАНО: Метод для оновлення статусу оплати
+        Task<bool> UpdatePaymentStatusAsync(string bookingId, bool isPaid, string? paymentIntentId = null);
     }
 }
