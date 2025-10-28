@@ -34,7 +34,7 @@ namespace ExamBookingSystem.Services
             try
             {
                 // ЗМІНІТЬ From адрес на верифікований
-                var from = new EmailAddress("contact@mom-ai-agency.site", fromName ?? "Exam Booking System");
+                var from = new EmailAddress("contact@mom-ai-agency.site", fromName ?? "JUMPSEAT");
                 var toEmail = new EmailAddress(to);
                 var msg = MailHelper.CreateSingleEmail(from, toEmail, subject, body, body);
 
@@ -66,7 +66,7 @@ namespace ExamBookingSystem.Services
             string attachmentContent,
             string attachmentFilename,
             string contentType,
-            string fromName = "Exam Booking System")
+            string fromName = "JUMPSEAT")
         {
             if (_isDemoMode)
             {
@@ -89,7 +89,7 @@ namespace ExamBookingSystem.Services
 
             try
             {
-                var from = new EmailAddress("contact@mom-ai-agency.site", fromName ?? "Exam Booking System");
+                var from = new EmailAddress("contact@mom-ai-agency.site", fromName ?? "JUMPSEAT");
                 var toAddress = new EmailAddress(to);
 
                 var msg = MailHelper.CreateSingleEmail(from, toAddress, subject, null, htmlContent);
