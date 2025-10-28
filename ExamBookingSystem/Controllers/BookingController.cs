@@ -496,7 +496,7 @@ namespace ExamBookingSystem.Controllers
                             <p>Best of luck with your checkride!</p>
                             
                             <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 12px;'>
-                                <p>Exam Booking System<br>
+                                <p>JUMPSEAT<br>
                                 This is an automated message with your calendar invitation.</p>
                             </div>
                         </div>
@@ -509,7 +509,7 @@ namespace ExamBookingSystem.Controllers
                     icsContent,
                     $"checkride_{bookingId}.ics",
                     "text/calendar",
-                    "Exam Booking System"
+                    "JUMPSEAT"
                 );
 
                 if (success)
