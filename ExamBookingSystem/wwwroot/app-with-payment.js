@@ -1,5 +1,24 @@
-﻿const API_BASE = '/api';
-const stripe = Stripe('pk_test_51Ri7PbECQKRSCDpzi5n5B0oclWVCPAbT32F1v3zEIooF0avPQTX2XWsjsTkF2sTPQgWnGIl8Ovd08JEUNxWUcEie00u5qO5lpt');
+const API_BASE = '/api';
+let stripe = null; // Буде ініціалізовано після завантаження ключа
+
+// Завантажуємо Stripe publishable key з сервера
+async function initializeStripe() {
+    try {
+        const response = await fetch('/api/Config/stripe-publishable-key');
+        if (response.ok) {
+            const data = await response.json();
+            stripe = Stripe(data.publishableKey);
+            console.log('✅ Stripe initialized');
+        } else {
+            console.error('❌ Failed to load Stripe key');
+        }
+    } catch (error) {
+        console.error('❌ Error loading Stripe key:', error);
+    }
+}
+
+// Викликаємо ініціалізацію одразу
+initializeStripe();
 
 // ============== EXAMINER AUTHENTICATION VARIABLES ==============
 let currentExaminer = null;
@@ -276,6 +295,12 @@ async function handleExaminerResponse(e) {
 document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // ✅ Перевірка чи Stripe ініціалізовано
+    if (!stripe) {
+        alert('Payment system not initialized. Please refresh the page.');
+        return;
+    }
 
     if (e.target.dataset.submitting === 'true') {
         return;
